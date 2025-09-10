@@ -1,0 +1,24 @@
+[project]
+name = "apostle-predictor"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { email = "andrew@protopia.ai" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "httpx==0.28.1",
+    "pandas==2.3.2",
+]
+
+[build-system]
+requires = ["uv_build>=0.8.14,<0.9.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pyrefly==0.32.0",
+    "ruff==0.12.12",
+    "ty==0.0.1a20",
+]
