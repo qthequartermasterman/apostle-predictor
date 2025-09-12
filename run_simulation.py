@@ -47,6 +47,12 @@ Examples:
 
     parser.add_argument("--seed", type=int, help="Random seed for reproducible results")
 
+    parser.add_argument(
+        "--show-monthly-composition",
+        action="store_true",
+        help="Show monthly composition changes during simulation",
+    )
+
     args = parser.parse_args()
 
     print("🏛️  Apostle Predictor - Monte Carlo Simulation")
@@ -107,7 +113,11 @@ Examples:
         print(f"🌱 Using random seed: {args.seed}")
 
     results = simulation.run_monte_carlo(
-        leaders=complete_leaders, years=args.years, iterations=args.iterations
+        leaders=complete_leaders,
+        years=args.years,
+        iterations=args.iterations,
+        show_monthly_composition=args.show_monthly_composition,
+        random_seed=args.seed,
     )
 
     # Step 3: Analyze results

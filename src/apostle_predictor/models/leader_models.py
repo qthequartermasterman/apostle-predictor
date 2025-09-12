@@ -223,11 +223,10 @@ class LeaderDataScraper:
 
     def _parse_leader_biography(self, url: str) -> BiographyPageData:
         """Parse an individual leader's biography page."""
-        response = self.client.get(url, follow_redirects=True)
-        response.raise_for_status()
-
         @auto_pydantic_cache.pydantic_cache
         def leader_biography_closure(url: str) -> BiographyPageData:
+            response = self.client.get(url, follow_redirects=True)
+            response.raise_for_status()
             soup = BeautifulSoup(response.text, "html.parser")
             tag = soup.find(id="__NEXT_DATA__")
 

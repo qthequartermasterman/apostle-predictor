@@ -60,7 +60,7 @@ class ApostolicSimulation:
         self.actuary_data = ACTUARY_DATAFRAME
 
     def run_simulation(
-        self, leaders: List[Leader], years: int, random_seed: int | None = None
+        self, leaders: List[Leader], years: int, random_seed: int | None = None, show_monthly_composition: bool = False
     ) -> SimulationResult:
         """Run a single simulation for the specified number of years.
 
@@ -68,6 +68,7 @@ class ApostolicSimulation:
             leaders: Current church leaders
             years: Number of years to simulate
             random_seed: Optional random seed for reproducibility
+            show_monthly_composition: Whether to display monthly apostolic composition
 
         Returns:
             SimulationResult containing the outcomes
@@ -81,11 +82,30 @@ class ApostolicSimulation:
         events: list[Event] = []
         current_date = self.start_date
         end_date = self.start_date + timedelta(days=years * 365)
+        
+        # Track last monthly report date
+        next_monthly_report = date(current_date.year, current_date.month, 1)
+        if current_date.day > 1:
+            # If we started mid-month, next report is next month
+            if current_date.month == 12:
+                next_monthly_report = date(current_date.year + 1, 1, 1)
+            else:
+                next_monthly_report = date(current_date.year, current_date.month + 1, 1)
 
         prophet_changes = 0
         apostolic_changes = 0
 
         while current_date < end_date:
+            # Check if we need to show monthly composition
+            if show_monthly_composition and current_date >= next_monthly_report:
+                self._display_monthly_composition(current_leaders, current_date)
+                
+                # Calculate next monthly report date
+                if next_monthly_report.month == 12:
+                    next_monthly_report = date(next_monthly_report.year + 1, 1, 1)
+                else:
+                    next_monthly_report = date(next_monthly_report.year, next_monthly_report.month + 1, 1)
+            
             # Check for deaths on this date
             deaths = self._check_for_deaths(current_leaders, current_date)
 
@@ -127,7 +147,7 @@ class ApostolicSimulation:
         )
 
     def run_monte_carlo(
-        self, leaders: List[Leader], years: int, iterations: int
+        self, leaders: List[Leader], years: int, iterations: int, show_monthly_composition: bool = False, random_seed:int|None = None
     ) -> List[SimulationResult]:
         """Run multiple Monte Carlo simulations.
 
@@ -135,15 +155,21 @@ class ApostolicSimulation:
             leaders: Current church leaders
             years: Number of years to simulate
             iterations: Number of simulation runs
+            show_monthly_composition: Whether to display monthly composition for the first simulation
 
         Returns:
             List of SimulationResult objects
         """
         results = []
 
+        if random_seed is None:
+            random_seed = random.randint(0, 2**30 -1)
+
         for i in range(iterations):
             # Use different random seed for each iteration
-            result = self.run_simulation(leaders, years, random_seed=i)
+            # Only show monthly composition for the first simulation to avoid spam
+            show_monthly = show_monthly_composition and i == 0
+            result = self.run_simulation(leaders, years, random_seed=i + random_seed, show_monthly_composition=show_monthly)
             results.append(result)
 
             if (i + 1) % 100 == 0:
@@ -231,7 +257,7 @@ class ApostolicSimulation:
 
         # Find what calling the deceased held
         deceased_callings = [
-            c for c in deceased.callings if c.status == CallingStatus.CURRENT
+            c for c in (deceased.callings or []) if c.status == CallingStatus.CURRENT
         ]
 
         for calling in deceased_callings:
@@ -244,6 +270,7 @@ class ApostolicSimulation:
             elif calling.calling_type in [
                 CallingType.APOSTLE,
                 CallingType.ACTING_PRESIDENT_QUORUM_TWELVE,
+                CallingType.COUNSELOR_FIRST_PRESIDENCY,
             ]:
                 # Apostle succession: Call new apostle (simplified - would be from Seventies)
                 events.extend(
@@ -258,13 +285,17 @@ class ApostolicSimulation:
         """Handle succession when the Prophet passes away."""
         events = []
 
-        # Find senior apostle (lowest seniority number)
+        # Find senior apostle (lowest seniority number) from ALL apostolic callings
         apostles = []
         for leader in current_leaders:
-            for calling in leader.callings:
+            for calling in (leader.callings or []):
                 if (
                     calling.calling_type
-                    in [CallingType.APOSTLE, CallingType.ACTING_PRESIDENT_QUORUM_TWELVE]
+                    in [
+                        CallingType.APOSTLE,
+                        CallingType.ACTING_PRESIDENT_QUORUM_TWELVE,
+                        CallingType.COUNSELOR_FIRST_PRESIDENCY
+                    ]
                     and calling.status == CallingStatus.CURRENT
                     and calling.seniority is not None
                 ):
@@ -275,8 +306,15 @@ class ApostolicSimulation:
             apostles.sort(key=lambda x: x[1].seniority)
             new_prophet, apostle_calling = apostles[0]
 
-            # Update calling to Prophet
+            # Update calling to Prophet (remove any counselor calling if present)
             apostle_calling.calling_type = CallingType.PROPHET
+            
+            # Remove any other First Presidency counselor callings for this leader
+            if new_prophet.callings:
+                new_prophet.callings = [
+                    c for c in new_prophet.callings 
+                    if not (c.calling_type == CallingType.COUNSELOR_FIRST_PRESIDENCY and c != apostle_calling)
+                ]
 
             events.append(
                 Event(
@@ -440,6 +478,50 @@ class ApostolicSimulation:
             c for s, c in scored_candidates[: min(5, len(scored_candidates))]
         ]
         return random.choice(top_candidates) if top_candidates else candidates[0]
+
+    def _display_monthly_composition(self, current_leaders: List[Leader], report_date: date) -> None:
+        """Display current apostolic composition ordered by seniority."""
+        print(f"\n📅 APOSTOLIC COMPOSITION - {report_date.strftime('%B %Y')}")
+        print("=" * 70)
+        
+        # Get all current apostolic leaders (First Presidency and Quorum of Twelve)
+        apostolic_leaders = []
+        
+        for leader in current_leaders:
+            for calling in leader.callings:
+                if (calling.status == CallingStatus.CURRENT and 
+                    calling.calling_type in [
+                        CallingType.PROPHET,
+                        CallingType.COUNSELOR_FIRST_PRESIDENCY,
+                        CallingType.APOSTLE,
+                        CallingType.ACTING_PRESIDENT_QUORUM_TWELVE
+                    ]):
+                    
+                    # Calculate current age
+                    age = self._calculate_age(leader, report_date)
+                    
+                    # Determine display order based on calling type and seniority
+                    if calling.calling_type == CallingType.PROPHET:
+                        sort_order = (0, calling.seniority or 0)  # Prophet first
+                        title = "Prophet"
+                    elif calling.calling_type == CallingType.COUNSELOR_FIRST_PRESIDENCY:
+                        sort_order = (1, calling.seniority or 0)  # First Presidency counselors next
+                        title = "Counselor in First Presidency"
+                    else:
+                        sort_order = (2, calling.seniority or 999)  # Apostles by seniority
+                        title = f"Apostle (Seniority #{calling.seniority})" if calling.seniority else "Apostle"
+                    
+                    apostolic_leaders.append((sort_order, leader.name, age, title))
+                    break
+        
+        # Sort by order (Prophet, Counselors, then Apostles by seniority)
+        apostolic_leaders.sort(key=lambda x: x[0])
+        
+        # Display the composition
+        for _, name, age, title in apostolic_leaders:
+            print(f"{title:<35} | {name:<25} | Age: {age:>3}")
+        
+        print("=" * 70)
 
 
 class SimulationAnalyzer:
