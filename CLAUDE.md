@@ -73,6 +73,7 @@ The simulation engine (`simulation.py`) models:
 - **HTTP Redirects**: Church website returns 302 redirects; use `follow_redirects=True` in httpx requests
 - **Data Validation**: All web scraping uses Pydantic models for type-safe JSON parsing
 - **Caching Strategy**: Individual biography pages are cached to minimize repeated requests during development
+- **Use Claude Agents**: For complex multi-step tasks, code reviews, linting, and documentation synchronization, leverage specialized Claude Code agents to maintain code quality and consistency
 
 ## Git Workflow
 
