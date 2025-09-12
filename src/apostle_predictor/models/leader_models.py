@@ -13,7 +13,7 @@ Presiding Bishopric: https://www.churchofjesuschrist.org/learn/presiding-bishopr
 """
 
 import pydantic
-from datetime import date, datetime
+from datetime import date
 from enum import Enum
 from typing import List, Optional, Dict, Any
 import httpx

@@ -12,7 +12,7 @@ from apostle_predictor.models.leader_models import (
     CallingType,
     CallingStatus,
 )
-from apostle_predictor.simulation import ApostolicSimulation, SimulationAnalyzer
+from apostle_predictor.simulation import ApostolicSimulation, SimulationAnalyzer, VectorizedApostolicSimulation, VectorizedSimulationAnalyzer, run_performance_benchmark
 
 
 def main():
@@ -51,6 +51,24 @@ Examples:
         "--show-monthly-composition",
         action="store_true",
         help="Show monthly composition changes during simulation",
+    )
+
+    parser.add_argument(
+        "--vectorized",
+        action="store_true",
+        help="Use vectorized simulation for much faster performance",
+    )
+
+    parser.add_argument(
+        "--benchmark",
+        action="store_true",
+        help="Run performance benchmark comparing original vs vectorized",
+    )
+
+    parser.add_argument(
+        "--show-succession-candidates",
+        action="store_true",
+        help="Show top 4 succession candidates each month (requires --vectorized and --show-monthly-composition)",
     )
 
     args = parser.parse_args()
@@ -102,27 +120,70 @@ Examples:
     for calling_type, count in sorted(calling_counts.items()):
         print(f"   {calling_type}: {count}")
 
+    # Handle benchmark mode
+    if args.benchmark:
+        run_performance_benchmark(
+            complete_leaders, 
+            iterations=min(args.iterations, 100),  # Limit for benchmark
+            years=args.years
+        )
+        return
+
     # Step 2: Run simulation
-    print(
-        f"\n🎲 Running {args.iterations} Monte Carlo simulations for {args.years} years..."
-    )
+    if args.vectorized:
+        print(
+            f"\n🚀 Running {args.iterations} vectorized Monte Carlo simulations for {args.years} years..."
+        )
+        
+        simulation = VectorizedApostolicSimulation()
+        
+        if args.seed is not None:
+            print(f"🌱 Using random seed: {args.seed}")
 
-    simulation = ApostolicSimulation()
+        vectorized_result = simulation.run_vectorized_monte_carlo(
+            leaders=complete_leaders,
+            years=args.years,
+            iterations=args.iterations,
+            random_seed=args.seed,
+            show_monthly_composition=args.show_monthly_composition,
+            show_succession_candidates=args.show_succession_candidates,
+        )
+        
+        # Get the arrays from the simulation for the analyzer
+        birth_years, current_ages, seniority, calling_types, leader_names = simulation._leaders_to_arrays(complete_leaders)
+        
+        
+    else:
+        print(
+            f"\n🎲 Running {args.iterations} Monte Carlo simulations for {args.years} years..."
+        )
 
-    if args.seed is not None:
-        print(f"🌱 Using random seed: {args.seed}")
+        simulation = ApostolicSimulation()
 
-    results = simulation.run_monte_carlo(
-        leaders=complete_leaders,
-        years=args.years,
-        iterations=args.iterations,
-        show_monthly_composition=args.show_monthly_composition,
-        random_seed=args.seed,
-    )
+        if args.seed is not None:
+            print(f"🌱 Using random seed: {args.seed}")
+
+        results = simulation.run_monte_carlo(
+            leaders=complete_leaders,
+            years=args.years,
+            iterations=args.iterations,
+            show_monthly_composition=args.show_monthly_composition,
+            random_seed=args.seed,
+        )
 
     # Step 3: Analyze results
     print("\n📊 Analyzing results...")
-    analyzer = SimulationAnalyzer(results)
+    if args.vectorized:
+        # Use specialized vectorized analyzer
+        analyzer = VectorizedSimulationAnalyzer(
+            vectorized_result=vectorized_result,
+            original_leaders=complete_leaders,
+            leader_names=leader_names,
+            seniority=seniority,
+            calling_types=calling_types
+        )
+    else:
+        analyzer = SimulationAnalyzer(results)
 
     # Get survival probabilities
     survival_probs = analyzer.get_survival_probabilities(complete_leaders)
@@ -255,6 +316,33 @@ Examples:
         print(
             f"• Current Prophet: {current_prophet.name} (Age {current_prophet.current_age})"
         )
+
+    # Show monthly succession summary if vectorized and succession candidates were shown
+    if args.vectorized and args.show_succession_candidates:
+        if hasattr(simulation, 'monthly_succession_data') and simulation.monthly_succession_data:
+            print("\n📊 MONTHLY SUCCESSION SUMMARY")
+            print("-" * 140)
+            header = f"{'Month':>15} | "
+            for i in range(4):
+                header += f"{'Name ' + str(i+1):<18} | {'Prob':<4} | {'Age':<3}"
+                if i < 3:
+                    header += " | "
+            print(header)
+            print("-" * 140)
+            
+            for data in simulation.monthly_succession_data:
+                row = f"{data['month']:>15} | "
+                candidates = data.get('candidates', [])
+                for i in range(4):
+                    if i < len(candidates):
+                        candidate = candidates[i]
+                        name = candidate['name'][:17] + "." if len(candidate['name']) > 18 else candidate['name']
+                        row += f"{name:<18} | {candidate['probability']:<4} | {str(candidate['age']):<3}"
+                    else:
+                        row += f"{'--':<18} | {'--':<4} | {'--':<3}"
+                    if i < 3:
+                        row += " | "
+                print(row)
 
     print("\n✨ Simulation completed successfully!")
 
