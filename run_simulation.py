@@ -208,6 +208,11 @@ Examples:
     survival_probs = analyzer.get_survival_probabilities(complete_leaders)
     succession_probs = analyzer.get_succession_probabilities(complete_leaders)
     summary_stats = analyzer.get_summary_statistics()
+    
+    # Get presidency statistics (only available for vectorized simulations)
+    presidency_stats = {}
+    if args.vectorized:
+        presidency_stats = analyzer.get_presidency_statistics(complete_leaders)
 
     # Step 4: Display results
     print(f"\n📈 SIMULATION RESULTS ({args.years} years, {args.iterations} iterations)")
@@ -262,6 +267,22 @@ Examples:
         print(
             f"{title:15} | {leader.name:25} | Prophet: {succession_prob:5.1f}% | Survival: {survival_prob:5.1f}%"
         )
+
+    # Show presidency statistics for vectorized simulations
+    if presidency_stats:
+        print("\n👑 PRESIDENCY STATISTICS (Days served as Prophet)")
+        print("-" * 80)
+        print(f"{'Title':15} | {'Name':25} | {'Ever Pres':9} | {'Mean Years':10} | {'Std Years':9}")
+        print("-" * 80)
+        for leader, sort_key, title in leaders_by_hierarchy:
+            stats = presidency_stats.get(leader.name, {})
+            ever_president_pct = stats.get('probability_of_presidency', 0.0) * 100
+            mean_years = stats.get('mean_presidency_years', 0.0)
+            std_years = stats.get('std_presidency_years', 0.0)
+            
+            print(
+                f"{title:15} | {leader.name:25} | {ever_president_pct:8.1f}% | {mean_years:9.2f} | {std_years:8.2f}"
+            )
 
     if args.detailed:
         print("\n👴 DETAILED LEADER INFORMATION")

@@ -597,6 +597,7 @@ class VectorizedSimulationResult:
     final_prophet_idx: np.ndarray  # Shape: (iterations,) - index of final prophet in each iteration
     prophet_changes: np.ndarray  # Shape: (iterations,) - number of prophet changes per iteration
     apostolic_changes: np.ndarray  # Shape: (iterations,) - number of apostolic changes per iteration
+    presidency_durations: np.ndarray  # Shape: (iterations, leaders) - days served as president, 0 if never served
 
 
 class VectorizedApostolicSimulation:
@@ -809,7 +810,8 @@ class VectorizedApostolicSimulation:
             succession_events=succession_results['events'],
             final_prophet_idx=succession_results['final_prophet'],
             prophet_changes=succession_results['prophet_changes'],
-            apostolic_changes=succession_results['apostolic_changes']
+            apostolic_changes=succession_results['apostolic_changes'],
+            presidency_durations=succession_results['presidency_durations']
         )
     
     def _calculate_vectorized_death_times(
@@ -875,6 +877,7 @@ class VectorizedApostolicSimulation:
         prophet_changes = np.zeros(iterations, dtype=int)
         apostolic_changes = np.zeros(iterations, dtype=int)
         final_prophet_idx = np.zeros(iterations, dtype=int)
+        presidency_durations = np.zeros((iterations, n_leaders), dtype=int)
         
         # For each iteration, simulate the succession process
         for iteration in range(iterations):
@@ -888,6 +891,9 @@ class VectorizedApostolicSimulation:
             # Create alive mask and current prophet tracking
             alive = np.ones(n_leaders, dtype=bool)
             current_prophet_idx = np.where(calling_types == 0)[0]  # Prophet = 0
+            
+            # Track presidency durations for this iteration
+            presidency_start_day = 0  # When current president started
             
             if len(current_prophet_idx) > 0:
                 current_prophet_idx = current_prophet_idx[0]
@@ -934,6 +940,9 @@ class VectorizedApostolicSimulation:
                 
                 # Check if this was the prophet
                 if dead_leader_idx == current_prophet_idx:
+                    # Record duration for outgoing prophet
+                    presidency_durations[iteration, current_prophet_idx] += death_day - presidency_start_day
+                    
                     changes_prophet += 1
                     
                     # Find next prophet (most senior living apostle)
@@ -943,6 +952,7 @@ class VectorizedApostolicSimulation:
                         # Get seniority of living apostolic leaders
                         living_seniority = np.where(apostolic_mask, seniority, np.inf)
                         current_prophet_idx = np.argmin(living_seniority)
+                        presidency_start_day = death_day  # New president starts today
                 
                 # Any apostolic death triggers a replacement
                 if calling_types[dead_leader_idx] in [0, 1, 2, 3]:  # Apostolic callings
@@ -965,6 +975,9 @@ class VectorizedApostolicSimulation:
                     )
                 next_monthly_report += 30
             
+            # Record final presidency duration for surviving president
+            presidency_durations[iteration, current_prophet_idx] += n_days - presidency_start_day
+            
             prophet_changes[iteration] = changes_prophet
             apostolic_changes[iteration] = changes_apostolic
             final_prophet_idx[iteration] = current_prophet_idx
@@ -977,7 +990,8 @@ class VectorizedApostolicSimulation:
             'events': np.array([]),  # Simplified for now - could add detailed event tracking
             'final_prophet': final_prophet_idx,
             'prophet_changes': prophet_changes,
-            'apostolic_changes': apostolic_changes
+            'apostolic_changes': apostolic_changes,
+            'presidency_durations': presidency_durations
         }
     
     def _calculate_monthly_succession_probabilities(self, leader_names: List[str], iterations: int) -> None:
@@ -1205,6 +1219,44 @@ class VectorizedSimulationAnalyzer:
 
         # Convert counts to probabilities
         return {name: count / self.iterations for name, count in prophet_counts.items()}
+    
+    def get_presidency_statistics(self, leaders: List[Leader]) -> Dict[str, Dict[str, float]]:
+        """Calculate presidency statistics for each leader."""
+        presidency_stats = {}
+        
+        for i, leader in enumerate(leaders):
+            leader_name = leader.name
+            
+            # Get presidency durations for this leader across all iterations (in days)
+            durations = self.result.presidency_durations[:, i]
+            
+            # Calculate statistics
+            total_iterations_as_president = np.sum(durations > 0)  # How many iterations they were president
+            probability_of_presidency = total_iterations_as_president / self.iterations
+            
+            if total_iterations_as_president > 0:
+                # Only calculate mean/std for iterations where they actually served
+                presidency_durations_when_served = durations[durations > 0]
+                mean_days = float(np.mean(presidency_durations_when_served))
+                std_days = float(np.std(presidency_durations_when_served))
+                mean_years = mean_days / 365.25
+                std_years = std_days / 365.25
+            else:
+                mean_days = 0.0
+                std_days = 0.0
+                mean_years = 0.0
+                std_years = 0.0
+            
+            presidency_stats[leader_name] = {
+                'probability_of_presidency': probability_of_presidency,
+                'mean_presidency_years': mean_years,
+                'std_presidency_years': std_years,
+                'mean_presidency_days': mean_days,
+                'std_presidency_days': std_days,
+                'total_iterations_as_president': int(total_iterations_as_president)
+            }
+        
+        return presidency_stats
 
     def get_summary_statistics(self) -> Dict[str, float]:
         """Get summary statistics across all simulations."""
