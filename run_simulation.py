@@ -71,6 +71,13 @@ Examples:
         help="Show top 4 succession candidates each month (requires --vectorized and --show-monthly-composition)",
     )
 
+    parser.add_argument(
+        "--unwell-hazard-ratio",
+        type=float,
+        default=6.0,
+        help="Mortality hazard ratio multiplier for leaders marked as unwell (default: 3.0)",
+    )
+
     args = parser.parse_args()
 
     print("🏛️  Apostle Predictor - Monte Carlo Simulation")
@@ -135,6 +142,12 @@ Examples:
             f"\n🚀 Running {args.iterations} vectorized Monte Carlo simulations for {args.years} years..."
         )
         
+        # Show unwell hazard ratio if not default
+        if args.unwell_hazard_ratio != 3.0:
+            print(f"⚡ Using custom unwell hazard ratio: {args.unwell_hazard_ratio}x")
+        else:
+            print(f"⚡ Using default unwell hazard ratio: {args.unwell_hazard_ratio}x")
+        
         simulation = VectorizedApostolicSimulation()
         
         if args.seed is not None:
@@ -147,10 +160,16 @@ Examples:
             random_seed=args.seed,
             show_monthly_composition=args.show_monthly_composition,
             show_succession_candidates=args.show_succession_candidates,
+            unwell_hazard_ratio=args.unwell_hazard_ratio,
         )
         
         # Get the arrays from the simulation for the analyzer
-        birth_years, current_ages, seniority, calling_types, leader_names = simulation._leaders_to_arrays(complete_leaders)
+        birth_years, current_ages, seniority, calling_types, unwell_mask, leader_names = simulation._leaders_to_arrays(complete_leaders)
+        
+        # Display unwell leaders
+        unwell_leaders = [leader_names[i] for i in range(len(leader_names)) if unwell_mask[i]]
+        if unwell_leaders:
+            print(f"🏥 Leaders marked as unwell (hazard ratio {args.unwell_hazard_ratio}x): {', '.join(unwell_leaders)}")
         
         
     else:

@@ -630,7 +630,7 @@ class VectorizedApostolicSimulation:
         for age in range(len(ages), self.max_age + 1):
             self.mortality_rates[age] = min(0.95, last_known_rate * (1.05 ** (age - ages[-1])))
     
-    def _leaders_to_arrays(self, leaders: List[Leader]) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, List[str]]:
+    def _leaders_to_arrays(self, leaders: List[Leader]) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, List[str]]:
         """Convert leader objects to numpy arrays for vectorized operations."""
         n_leaders = len(leaders)
         
@@ -639,6 +639,7 @@ class VectorizedApostolicSimulation:
         current_ages = np.zeros(n_leaders, dtype=int)
         seniority = np.zeros(n_leaders, dtype=int)
         calling_types = np.zeros(n_leaders, dtype=int)  # Encoded as integers
+        unwell_mask = np.zeros(n_leaders, dtype=bool)  # Boolean mask for unwell leaders
         leader_names = []
         
         # Encode calling types
@@ -660,6 +661,14 @@ class VectorizedApostolicSimulation:
             else:
                 current_ages[i] = leader.current_age or 75
                 birth_years[i] = self.start_date.year - current_ages[i]
+            
+            # Check if leader is marked as unwell (hardcoded for specific leaders)
+            unwell_leaders = {
+                "Russell M. Nelson",      # President Nelson
+                "Jeffrey R. Holland",     # Elder Holland  
+                "Henry B. Eyring"         # Elder Eyring
+            }
+            unwell_mask[i] = leader.name in unwell_leaders
             
             # Find primary apostolic calling
             primary_calling = None
@@ -685,7 +694,7 @@ class VectorizedApostolicSimulation:
                 calling_types[i] = calling_type_map[CallingType.GENERAL_AUTHORITY]
                 seniority[i] = 999
         
-        return birth_years, current_ages, seniority, calling_types, leader_names
+        return birth_years, current_ages, seniority, calling_types, unwell_mask, leader_names
     
     def _calculate_apostolic_seniority(self, leader: Leader, primary_calling: Calling) -> int:
         """Calculate proper apostolic seniority based on calling date."""
@@ -716,13 +725,15 @@ class VectorizedApostolicSimulation:
             # Use current apostle calling date
             apostle_calling_date = primary_calling.start_date
         elif primary_calling.calling_type == CallingType.COUNSELOR_FIRST_PRESIDENCY:
-            # Find their original apostle calling
+            # Find their EARLIEST apostle calling (original call to apostleship)
             if leader.callings:
+                earliest_apostle_date = None
                 for calling in leader.callings:
                     if (calling.calling_type == CallingType.APOSTLE and 
                         calling.start_date is not None):
-                        apostle_calling_date = calling.start_date
-                        break
+                        if earliest_apostle_date is None or calling.start_date < earliest_apostle_date:
+                            earliest_apostle_date = calling.start_date
+                apostle_calling_date = earliest_apostle_date
         
         if apostle_calling_date:
             # Find seniority based on calling date
@@ -755,7 +766,8 @@ class VectorizedApostolicSimulation:
         iterations: int, 
         random_seed: Optional[int] = None,
         show_monthly_composition: bool = False,
-        show_succession_candidates: bool = False
+        show_succession_candidates: bool = False,
+        unwell_hazard_ratio: float = 3.0
     ) -> VectorizedSimulationResult:
         """Run vectorized Monte Carlo simulation for massive speedup."""
         
@@ -770,7 +782,7 @@ class VectorizedApostolicSimulation:
         self.monthly_president_data = {} if show_succession_candidates else None  # {day: [president_indices_by_iteration]}
         
         # Convert leaders to arrays
-        birth_years, current_ages, seniority, calling_types, leader_names = self._leaders_to_arrays(leaders)
+        birth_years, current_ages, seniority, calling_types, unwell_mask, leader_names = self._leaders_to_arrays(leaders)
         n_leaders = len(leaders)
         n_days = years * 365
         
@@ -782,7 +794,7 @@ class VectorizedApostolicSimulation:
         
         # Calculate death times for all iterations simultaneously
         death_times = self._calculate_vectorized_death_times(
-            current_ages, random_array, n_days
+            current_ages, random_array, n_days, unwell_mask, unwell_hazard_ratio
         )
         
         # Process succession events across all iterations
@@ -804,7 +816,9 @@ class VectorizedApostolicSimulation:
         self, 
         current_ages: np.ndarray, 
         random_array: np.ndarray,
-        n_days: int
+        n_days: int,
+        unwell_mask: np.ndarray,
+        unwell_hazard_ratio: float
     ) -> np.ndarray:
         """Calculate death times using vectorized operations."""
         
@@ -823,8 +837,17 @@ class VectorizedApostolicSimulation:
             # Get mortality rates for these ages
             daily_death_probs = 1 - (1 - self.mortality_rates[ages_today]) ** (1/365)
             
+            # Apply hazard ratio multiplier for unwell leaders
+            # For unwell leaders, multiply their death probability by the hazard ratio
+            # Cap at maximum probability of 0.95 to avoid invalid probabilities
+            adjusted_death_probs = np.where(
+                unwell_mask, 
+                np.minimum(daily_death_probs * unwell_hazard_ratio, 0.95),
+                daily_death_probs
+            )
+            
             # Check who dies today across all iterations (broadcast properly)
-            dies_today = random_array[:, :, day] < daily_death_probs[np.newaxis, :]
+            dies_today = random_array[:, :, day] < adjusted_death_probs[np.newaxis, :]
             
             # Update death times (only if not already dead)
             mask = (death_times == -1) & dies_today
