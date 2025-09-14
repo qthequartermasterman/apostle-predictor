@@ -75,6 +75,8 @@ class TestSimulationE2E:
         )
 
         assert result.returncode == 0, f"Simulation failed: {result.stderr}"
+        # Verify succession candidates specific output is present
+        assert "📊 MONTHLY SUCCESSION SUMMARY" in result.stdout
 
     def test_custom_hazard_ratio(self, simulation_script):
         """Test simulation with custom unwell hazard ratio."""
@@ -132,3 +134,6 @@ class TestSimulationE2E:
         # Both should succeed and produce output
         assert "Simulation completed successfully" in result1.stdout
         assert "Simulation completed successfully" in result2.stdout
+
+        # Verify identical seeds produce identical output
+        assert result1.stdout == result2.stdout, "Same seed should produce identical output"
