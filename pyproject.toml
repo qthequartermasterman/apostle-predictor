@@ -12,7 +12,7 @@ dependencies = [
     "beautifulsoup4==4.13.5",
     "httpx==0.28.1",
     "pandas==2.3.2",
-    "pydantic==2.11.7",
+    "pydantic==2.11.9",
 ]
 
 [build-system]
@@ -21,11 +21,11 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
-    "pre-commit==4.0.1",
+    "pre-commit==4.3.0",
     "pyrefly==0.32.0",
     "pytest==8.4.2",
     "pytest-github-actions-annotate-failures==0.3.0",
-    "ruff==0.12.12",
+    "ruff==0.13.0",
     "ty==0.0.1a20",
 ]
 

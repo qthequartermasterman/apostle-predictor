@@ -4,6 +4,10 @@ import contextlib
 import random
 from datetime import UTC, date, datetime
 
+import auto_pydantic_cache
+import httpx
+from bs4 import BeautifulSoup
+
 from apostle_predictor.models.biography_models import BiographyPageData
 from apostle_predictor.models.leader_models import (
     Calling,
@@ -12,6 +16,8 @@ from apostle_predictor.models.leader_models import (
     ConferenceTalk,
     Leader,
 )
+from apostle_predictor.models.organization_models import OrganizationPageData
+from apostle_predictor.models.seventies_models import SeventiesApiResponse
 
 
 def biography_to_leader(bio_data: BiographyPageData) -> Leader | None:
@@ -99,6 +105,10 @@ def _generate_conference_talks_data(name: str, callings: list[Calling]) -> list[
     This is a placeholder implementation using historical data patterns.
     In a real implementation, this would scrape actual conference talk data.
     """
+    # Use name as seed for deterministic random generation
+    name_seed = hash(name) % (2**32)
+    rng = random.Random(name_seed)
+
     # Historical data: Average conference talks given before apostolic calling
     # Based on analysis of historical apostles
     apostle_pre_calling_talks = {
@@ -131,7 +141,7 @@ def _generate_conference_talks_data(name: str, callings: list[Calling]) -> list[
         )
 
         # General Authority Seventies: 2-15 talks; Others: 0-8 talks
-        base_talk_count = random.randint(2, 15) if is_general_authority else random.randint(0, 8)
+        base_talk_count = rng.randint(2, 15) if is_general_authority else rng.randint(0, 8)
 
     # Generate conference talks with dates
     talks = []
@@ -142,12 +152,12 @@ def _generate_conference_talks_data(name: str, callings: list[Calling]) -> list[
 
         for i in range(base_talk_count):
             # Generate semi-annual conference dates (April and October)
-            year = random.randint(start_date.year, end_date.year)
-            month = random.choice([4, 10])  # April or October
-            day = random.randint(1, 7)  # Conference is usually first weekend
+            year = rng.randint(start_date.year, end_date.year)
+            month = rng.choice([4, 10])  # April or October
+            day = rng.randint(1, 7)  # Conference is usually first weekend
 
             talk_date = date(year, month, day)
-            session = random.choice(
+            session = rng.choice(
                 [
                     "Saturday Morning",
                     "Saturday Afternoon",
@@ -166,3 +176,98 @@ def _generate_conference_talks_data(name: str, callings: list[Calling]) -> list[
             talks.append(talk)
 
     return sorted(talks, key=lambda x: x.date)
+
+
+class LeaderDataScraper:
+    """Scrapes and processes leader biographical data from church sources."""
+
+    def __init__(self) -> None:
+        """Initialize the scraper with HTTP client and base URL."""
+        self.client = httpx.Client(timeout=30.0)
+        self.base_url = "https://www.churchofjesuschrist.org"
+
+    def scrape_general_authorities(self) -> list[Leader]:
+        """Scrape current General Authority data from church website."""
+        # Leadership organization URLs
+        organization_urls = [
+            "https://www.churchofjesuschrist.org/learn/first-presidency?lang=eng",
+            "https://www.churchofjesuschrist.org/learn/quorum-of-the-twelve-apostles?lang=eng",
+            "https://www.churchofjesuschrist.org/learn/presidency-of-the-seventy?lang=eng",
+            "https://www.churchofjesuschrist.org/learn/presiding-bishopric?lang=eng",
+            "https://www.churchofjesuschrist.org/learn/young-men-general-presidency?lang=eng",
+            "https://www.churchofjesuschrist.org/learn/sunday-school-general-presidency?lang=eng",
+        ]
+
+        # Get all leader biography URLs
+        leader_urls: list[str] = []
+        for url in organization_urls:
+            leader_urls.extend(self._get_organization_members_links(url))
+
+        # Add General Authority Seventies
+        leader_urls.extend(self._get_seventies_links())
+
+        # Parse each leader's biography
+        leaders: list[Leader] = []
+        for url in leader_urls:
+            try:
+                bio_data = self._parse_leader_biography(url)
+                leader = biography_to_leader(bio_data)
+                if leader:
+                    leaders.append(leader)
+            except Exception as e:
+                print(f"Error parsing {url}: {e}")
+
+        return leaders
+
+    def _get_organization_members_links(self, collection_url: str) -> list[str]:
+        """Get canonical URLs for members of a leadership organization."""
+        response = self.client.get(collection_url)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+        next_data_script = soup.find(id="__NEXT_DATA__")
+
+        if not next_data_script or not next_data_script.string:
+            return []
+
+        parsed = OrganizationPageData.model_validate_json(next_data_script.string)
+        collection_component = next(
+            (
+                component
+                for component in parsed.props.pageProps.body
+                if component.component == "collection"
+            ),
+            None,
+        )
+
+        if collection_component:
+            return [member.canonicalUrl for member in collection_component.props.items]
+        return []
+
+    def _get_seventies_links(self) -> list[str]:
+        """Get canonical URLs for General Authority Seventies."""
+        api_url = (
+            "https://www.churchofjesuschrist.org/api/dozr/services/content/1/runNamedQuery"
+            "?args=%7B%22name%22%3A%22BSP%3AGET_GA_SEVENTY%22%2C%22variables%22%3A%7B%22isPreview%22%3Afalse%7D%2C%22cache%22%3A3600%2C%22lang%22%3A%22eng%22%2C%22limit%22%3A500%7D"
+        )
+        response = self.client.get(api_url)
+        response.raise_for_status()
+        parsed = SeventiesApiResponse.model_validate(response.json())
+        return [data.link for data in parsed.data]
+
+    def _parse_leader_biography(self, url: str) -> BiographyPageData:
+        """Parse an individual leader's biography page."""
+
+        @auto_pydantic_cache.pydantic_cache
+        def leader_biography_closure(url: str) -> BiographyPageData:
+            response = self.client.get(url, follow_redirects=True)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, "html.parser")
+            tag = soup.find(id="__NEXT_DATA__")
+
+            if tag is None or not tag.string:
+                msg = f"__NEXT_DATA__ tag missing from {url}"
+                raise ValueError(msg)
+
+            return BiographyPageData.model_validate_json(tag.string)
+
+        return leader_biography_closure(url)

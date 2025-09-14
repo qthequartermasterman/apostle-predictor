@@ -586,6 +586,7 @@ class VectorizedApostolicSimulation:
         """Run vectorized Monte Carlo simulation for massive speedup."""
         if random_seed is not None:
             np.random.seed(random_seed)
+            random.seed(random_seed)
 
         # Store original leaders for age calculations
         self.original_leaders = leaders
