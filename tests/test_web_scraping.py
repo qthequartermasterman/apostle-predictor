@@ -6,11 +6,10 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from apostle_predictor.data_converters import biography_to_leader
+from apostle_predictor.data_converters import LeaderDataScraper, biography_to_leader
 from apostle_predictor.models.leader_models import (
     CallingStatus,
     CallingType,
-    LeaderDataScraper,
 )
 
 
@@ -26,7 +25,7 @@ class TestLeaderDataScraper:
         assert self.scraper.base_url == "https://www.churchofjesuschrist.org"
         assert self.scraper.client is not None
 
-    @patch("apostle_predictor.models.leader_models.httpx.Client.get")
+    @patch("apostle_predictor.data_converters.httpx.Client.get")
     def test_get_organization_members_links_success(self, mock_get) -> None:
         """Test successful extraction of member links from organization page."""
         # Mock HTML with __NEXT_DATA__ JSON
@@ -51,7 +50,7 @@ class TestLeaderDataScraper:
         assert "russell-m-nelson" in urls[0]
         assert "dallin-h-oaks" in urls[1]
 
-    @patch("apostle_predictor.models.leader_models.httpx.Client.get")
+    @patch("apostle_predictor.data_converters.httpx.Client.get")
     def test_get_seventies_links_success(self, mock_get) -> None:
         """Test successful extraction of seventies links from API."""
         mock_api_response = {
@@ -84,7 +83,7 @@ class TestLeaderDataScraper:
         assert "elder-test1" in urls[0]
         assert "elder-test2" in urls[1]
 
-    @patch("apostle_predictor.models.leader_models.httpx.Client.get")
+    @patch("apostle_predictor.data_converters.httpx.Client.get")
     def test_parse_leader_biography_success(self, mock_get) -> None:
         """Test that biography parsing returns BiographyPageData."""
         # Mock HTML with __NEXT_DATA__ JSON
