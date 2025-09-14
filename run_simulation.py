@@ -8,11 +8,11 @@ from typing import Any
 # Add src to path so we can import our modules
 sys.path.append("src")
 
+from apostle_predictor.data_converters import LeaderDataScraper
 from apostle_predictor.models.leader_models import (
     CallingStatus,
     CallingType,
     Leader,
-    LeaderDataScraper,
 )
 from apostle_predictor.simulation import (
     VectorizedApostolicSimulation,
