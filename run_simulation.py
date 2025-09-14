@@ -13,11 +13,8 @@ from apostle_predictor.models.leader_models import (
     CallingStatus,
 )
 from apostle_predictor.simulation import (
-    ApostolicSimulation,
-    SimulationAnalyzer,
     VectorizedApostolicSimulation,
     VectorizedSimulationAnalyzer,
-    run_performance_benchmark,
 )
 
 
@@ -60,21 +57,9 @@ Examples:
     )
 
     parser.add_argument(
-        "--vectorized",
-        action="store_true",
-        help="Use vectorized simulation for much faster performance",
-    )
-
-    parser.add_argument(
-        "--benchmark",
-        action="store_true",
-        help="Run performance benchmark comparing original vs vectorized",
-    )
-
-    parser.add_argument(
         "--show-succession-candidates",
         action="store_true",
-        help="Show top 4 succession candidates each month (requires --vectorized and --show-monthly-composition)",
+        help="Show top 4 succession candidates each month (requires --show-monthly-composition)",
     )
 
     parser.add_argument(
@@ -136,114 +121,81 @@ Examples:
     for calling_type, count in sorted(calling_counts.items()):
         print(f"   {calling_type}: {count}")
 
-    # Handle benchmark mode
-    if args.benchmark:
-        run_performance_benchmark(
-            complete_leaders,
-            iterations=min(args.iterations, 100),  # Limit for benchmark
-            years=args.years,
-        )
-        return
-
     # Step 2: Run simulation
-    if args.vectorized:
-        print(
-            f"\n🚀 Running {args.iterations} vectorized Monte Carlo simulations for {args.years} years..."
-        )
+    print(
+        f"\n🚀 Running {args.iterations} Monte Carlo simulations for {args.years} years..."
+    )
 
-        # Show unwell hazard ratio if not default
-        if args.unwell_hazard_ratio != 3.0:
-            print(f"⚡ Using custom unwell hazard ratio: {args.unwell_hazard_ratio}x")
-        else:
-            print(f"⚡ Using default unwell hazard ratio: {args.unwell_hazard_ratio}x")
-
-        simulation = VectorizedApostolicSimulation()
-
-        if args.seed is not None:
-            print(f"🌱 Using random seed: {args.seed}")
-
-        vectorized_result = simulation.run_vectorized_monte_carlo(
-            leaders=complete_leaders,
-            years=args.years,
-            iterations=args.iterations,
-            random_seed=args.seed,
-            show_monthly_composition=args.show_monthly_composition,
-            show_succession_candidates=args.show_succession_candidates,
-            unwell_hazard_ratio=args.unwell_hazard_ratio,
-        )
-
-        # Get the arrays from the simulation for the analyzer
-        (
-            birth_years,
-            current_ages,
-            seniority,
-            calling_types,
-            unwell_mask,
-            leader_names,
-        ) = simulation._leaders_to_arrays(complete_leaders)
-
-        # Display unwell leaders
-        unwell_leaders = [
-            leader_names[i] for i in range(len(leader_names)) if unwell_mask[i]
-        ]
-        if unwell_leaders:
-            print(
-                f"🏥 Leaders marked as unwell (hazard ratio {args.unwell_hazard_ratio}x): {', '.join(unwell_leaders)}"
-            )
-
-        # Display replacement events if any occurred
-        if hasattr(simulation, "replacement_events") and simulation.replacement_events:
-            print("\n🔄 APOSTLE REPLACEMENT EVENTS")
-            print("-" * 60)
-            for event in simulation.replacement_events:
-                print(
-                    f"Day {event['day']:4} ({event['date'].strftime('%Y-%m-%d')}): "
-                    f"{event['replacement_title']} {event['replacement_name']} "
-                    f"(age {event['replacement_age']}) called as apostle to replace {event['replaced_leader']}"
-                )
-            print()
-
+    # Show unwell hazard ratio if not default
+    if args.unwell_hazard_ratio != 3.0:
+        print(f"⚡ Using custom unwell hazard ratio: {args.unwell_hazard_ratio}x")
     else:
+        print(f"⚡ Using default unwell hazard ratio: {args.unwell_hazard_ratio}x")
+
+    simulation = VectorizedApostolicSimulation()
+
+    if args.seed is not None:
+        print(f"🌱 Using random seed: {args.seed}")
+
+    vectorized_result = simulation.run_vectorized_monte_carlo(
+        leaders=complete_leaders,
+        years=args.years,
+        iterations=args.iterations,
+        random_seed=args.seed,
+        show_monthly_composition=args.show_monthly_composition,
+        show_succession_candidates=args.show_succession_candidates,
+        unwell_hazard_ratio=args.unwell_hazard_ratio,
+    )
+
+    # Get the arrays from the simulation for the analyzer
+    (
+        birth_years,
+        current_ages,
+        seniority,
+        calling_types,
+        unwell_mask,
+        leader_names,
+    ) = simulation._leaders_to_arrays(complete_leaders)
+
+    # Display unwell leaders
+    unwell_leaders = [
+        leader_names[i] for i in range(len(leader_names)) if unwell_mask[i]
+    ]
+    if unwell_leaders:
         print(
-            f"\n🎲 Running {args.iterations} Monte Carlo simulations for {args.years} years..."
+            f"🏥 Leaders marked as unwell (hazard ratio {args.unwell_hazard_ratio}x): {', '.join(unwell_leaders)}"
         )
 
-        simulation = ApostolicSimulation()
-
-        if args.seed is not None:
-            print(f"🌱 Using random seed: {args.seed}")
-
-        results = simulation.run_monte_carlo(
-            leaders=complete_leaders,
-            years=args.years,
-            iterations=args.iterations,
-            show_monthly_composition=args.show_monthly_composition,
-            random_seed=args.seed,
-        )
+    # Display replacement events if any occurred
+    if hasattr(simulation, "replacement_events") and simulation.replacement_events:
+        print("\n🔄 APOSTLE REPLACEMENT EVENTS")
+        print("-" * 60)
+        for event in simulation.replacement_events:
+            print(
+                f"Day {event['day']:4} ({event['date'].strftime('%Y-%m-%d')}): "
+                f"{event['replacement_title']} {event['replacement_name']} "
+                f"(age {event['replacement_age']}) called as apostle to replace {event['replaced_leader']}"
+            )
+        print()
 
     # Step 3: Analyze results
     print("\n📊 Analyzing results...")
-    if args.vectorized:
-        # Use specialized vectorized analyzer
-        analyzer = VectorizedSimulationAnalyzer(
-            vectorized_result=vectorized_result,
-            original_leaders=complete_leaders,
-            leader_names=leader_names,
-            seniority=seniority,
-            calling_types=calling_types,
-        )
-    else:
-        analyzer = SimulationAnalyzer(results)
+    # Use specialized vectorized analyzer
+    analyzer = VectorizedSimulationAnalyzer(
+        vectorized_result=vectorized_result,
+        original_leaders=complete_leaders,
+        leader_names=leader_names,
+        seniority=seniority,
+        calling_types=calling_types,
+    )
 
     # Get survival probabilities
     survival_probs = analyzer.get_survival_probabilities(complete_leaders)
     succession_probs = analyzer.get_succession_probabilities(complete_leaders)
     summary_stats = analyzer.get_summary_statistics()
 
-    # Get presidency statistics (only available for vectorized simulations)
-    presidency_stats = {}
-    if args.vectorized:
-        presidency_stats = analyzer.get_presidency_statistics(complete_leaders)
+    # Get presidency statistics
+    presidency_stats = analyzer.get_presidency_statistics(complete_leaders)
 
     # Step 4: Display results
     print(f"\n📈 SIMULATION RESULTS ({args.years} years, {args.iterations} iterations)")
@@ -390,8 +342,8 @@ Examples:
             f"• Current Prophet: {current_prophet.name} (Age {current_prophet.current_age})"
         )
 
-    # Show monthly succession summary if vectorized and succession candidates were shown
-    if args.vectorized and args.show_succession_candidates:
+    # Show monthly succession summary if succession candidates were shown
+    if args.show_succession_candidates:
         if (
             hasattr(simulation, "monthly_succession_data")
             and simulation.monthly_succession_data
