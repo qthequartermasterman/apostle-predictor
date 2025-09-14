@@ -28,7 +28,7 @@ class TestLeaderDataScraper:
     def test_get_organization_members_links_success(self, mock_get):
         """Test successful extraction of member links from organization page."""
         # Mock HTML with __NEXT_DATA__ JSON
-        mock_html = '''
+        mock_html = """
         <html>
             <body>
                 <script id="__NEXT_DATA__" type="application/json">
@@ -36,7 +36,7 @@ class TestLeaderDataScraper:
                 </script>
             </body>
         </html>
-        '''
+        """
 
         mock_response = Mock()
         mock_response.text = mock_html
@@ -55,19 +55,19 @@ class TestLeaderDataScraper:
         mock_api_response = {
             "data": [
                 {
-                    "link": "https://www.churchofjesuschrist.org/learn/elder-test1", 
+                    "link": "https://www.churchofjesuschrist.org/learn/elder-test1",
                     "familyName": "Test1",
                     "fullName": "Elder Test One",
                     "preferredName": "Test One",
-                    "callings": []
+                    "callings": [],
                 },
                 {
-                    "link": "https://www.churchofjesuschrist.org/learn/elder-test2", 
+                    "link": "https://www.churchofjesuschrist.org/learn/elder-test2",
                     "familyName": "Test2",
-                    "fullName": "Elder Test Two", 
+                    "fullName": "Elder Test Two",
                     "preferredName": "Test Two",
-                    "callings": []
-                }
+                    "callings": [],
+                },
             ]
         }
 
@@ -86,7 +86,7 @@ class TestLeaderDataScraper:
     def test_parse_leader_biography_success(self, mock_get):
         """Test that biography parsing returns BiographyPageData."""
         # Mock HTML with __NEXT_DATA__ JSON
-        mock_html = '''
+        mock_html = """
         <html>
             <body>
                 <script id="__NEXT_DATA__" type="application/json">
@@ -94,7 +94,7 @@ class TestLeaderDataScraper:
                 </script>
             </body>
         </html>
-        '''
+        """
 
         mock_response = Mock()
         mock_response.text = mock_html
@@ -119,7 +119,7 @@ class TestDataConverters:
         mock_bio = Mock()
         mock_bio.props.pageProps.contentPerson = [Mock()]
         person = mock_bio.props.pageProps.contentPerson[0]
-        
+
         # Set up person data
         person.displayName = "Russell M. Nelson"
         person.preferredName = None
@@ -149,13 +149,13 @@ class TestDataConverters:
         mock_bio = Mock()
         mock_bio.props.pageProps.contentPerson = [Mock()]
         person = mock_bio.props.pageProps.contentPerson[0]
-        
+
         person.displayName = "Jeffrey R. Holland"
         person.preferredName = None
         person.name = None
         person.birthDate = Mock()
         person.birthDate.fullDate = date(1940, 12, 3)
-        
+
         # Mock calling data
         mock_calling = Mock()
         mock_calling.callDate = "1994-07-01"
@@ -192,37 +192,40 @@ class TestWebScrapingIntegration:
 
         # Should find a reasonable number of leaders
         assert len(leaders) >= 15  # At minimum: First Presidency + Twelve
-        
+
         # Verify we have leaders with proper data
-        leaders_with_birth_dates = [leader for leader in leaders if leader.birth_date is not None]
+        leaders_with_birth_dates = [
+            leader for leader in leaders if leader.birth_date is not None
+        ]
         assert len(leaders_with_birth_dates) >= 10
-        
+
         # Verify we have current callings
         current_calling_count = 0
         for leader in leaders:
             if leader.callings:
                 current_calling_count += sum(
-                    1 for c in leader.callings 
-                    if c.status == CallingStatus.CURRENT
+                    1 for c in leader.callings if c.status == CallingStatus.CURRENT
                 )
         assert current_calling_count >= 15
 
-    @pytest.mark.slow  
+    @pytest.mark.slow
     def test_get_seventies_links_real(self):
         """Test getting actual seventies data from API."""
         # Test the public interface method instead of protected method
         scraper = LeaderDataScraper()
         leaders = scraper.scrape_general_authorities()
-        
+
         # Count leaders who are General Authority Seventies
         ga_seventy_count = 0
         for leader in leaders:
             if leader.callings:
                 for calling in leader.callings:
-                    if (calling.calling_type == CallingType.GENERAL_AUTHORITY 
-                        and calling.status == CallingStatus.CURRENT):
+                    if (
+                        calling.calling_type == CallingType.GENERAL_AUTHORITY
+                        and calling.status == CallingStatus.CURRENT
+                    ):
                         ga_seventy_count += 1
                         break
-        
+
         # Should find some General Authority Seventies (API includes many)
         assert ga_seventy_count >= 20

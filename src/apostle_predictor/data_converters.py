@@ -4,7 +4,12 @@ from datetime import date, datetime
 from typing import Optional
 
 from apostle_predictor.models.biography_models import BiographyPageData
-from apostle_predictor.models.leader_models import Leader, Calling, CallingType, CallingStatus
+from apostle_predictor.models.leader_models import (
+    Leader,
+    Calling,
+    CallingType,
+    CallingStatus,
+)
 
 
 def biography_to_leader(bio_data: BiographyPageData) -> Optional[Leader]:

@@ -1,0 +1,60 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Run Apostle Simulation (Quick Test)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/run_simulation.py",
+            "args": [
+                "--vectorized",
+                "--years", "5",
+                "--iterations", "10",
+                "--seed", "42"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Run Apostle Simulation (Full Analysis)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/run_simulation.py",
+            "args": [
+                "--vectorized",
+                "--years", "15",
+                "--iterations", "100",
+                "--detailed",
+                "--seed", "123"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Run Apostle Simulation (With Monthly Reports)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/run_simulation.py",
+            "args": [
+                "--vectorized",
+                "--years", "10",
+                "--iterations", "20",
+                "--show-monthly-composition",
+                "--show-succession-candidates",
+                "--seed", "456"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
