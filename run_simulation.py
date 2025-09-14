@@ -18,7 +18,7 @@ from apostle_predictor.simulation import (
 )
 
 
-def main():
+def main() -> None:
     """Main CLI interface."""
     parser = argparse.ArgumentParser(
         description="Run Monte Carlo simulations for apostolic succession",
@@ -45,7 +45,9 @@ Examples:
     )
 
     parser.add_argument(
-        "--detailed", action="store_true", help="Show detailed results for each apostle",
+        "--detailed",
+        action="store_true",
+        help="Show detailed results for each apostle",
     )
 
     parser.add_argument("--seed", type=int, help="Random seed for reproducible results")
@@ -59,7 +61,7 @@ Examples:
     parser.add_argument(
         "--show-succession-candidates",
         action="store_true",
-        help="Show top 4 succession candidates each month (requires --show-monthly-composition)",
+        help=("Show top 4 succession candidates each month (requires --show-monthly-composition)"),
     )
 
     parser.add_argument(
@@ -158,9 +160,7 @@ Examples:
     ) = simulation._leaders_to_arrays(complete_leaders)
 
     # Display unwell leaders
-    unwell_leaders = [
-        leader_names[i] for i in range(len(leader_names)) if unwell_mask[i]
-    ]
+    unwell_leaders = [leader_names[i] for i in range(len(leader_names)) if unwell_mask[i]]
     if unwell_leaders:
         print(
             f"🏥 Leaders marked as unwell (hazard ratio {args.unwell_hazard_ratio}x): {', '.join(unwell_leaders)}",
@@ -344,10 +344,7 @@ Examples:
 
     # Show monthly succession summary if succession candidates were shown
     if args.show_succession_candidates:
-        if (
-            hasattr(simulation, "monthly_succession_data")
-            and simulation.monthly_succession_data
-        ):
+        if hasattr(simulation, "monthly_succession_data") and simulation.monthly_succession_data:
             print("\n📊 MONTHLY SUCCESSION SUMMARY")
             print("-" * 140)
             header = f"{'Month':>15} | "
@@ -369,7 +366,9 @@ Examples:
                             if len(candidate["name"]) > 18
                             else candidate["name"]
                         )
-                        row += f"{name:<18} | {candidate['probability']:<4} | {candidate['age']!s:<3}"
+                        row += (
+                            f"{name:<18} | {candidate['probability']:<4} | {candidate['age']!s:<3}"
+                        )
                     else:
                         row += f"{'--':<18} | {'--':<4} | {'--':<3}"
                     if i < 3:

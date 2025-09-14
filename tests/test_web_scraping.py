@@ -195,9 +195,7 @@ class TestWebScrapingIntegration:
         assert len(leaders) >= 15  # At minimum: First Presidency + Twelve
 
         # Verify we have leaders with proper data
-        leaders_with_birth_dates = [
-            leader for leader in leaders if leader.birth_date is not None
-        ]
+        leaders_with_birth_dates = [leader for leader in leaders if leader.birth_date is not None]
         assert len(leaders_with_birth_dates) >= 10
 
         # Verify we have current callings

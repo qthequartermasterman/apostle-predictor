@@ -121,7 +121,10 @@ class TestVectorizedApostolicSimulation:
 
         # Run short simulation
         result = self.simulation.run_vectorized_monte_carlo(
-            leaders=leaders, years=1, iterations=5, random_seed=42,
+            leaders=leaders,
+            years=1,
+            iterations=5,
+            random_seed=42,
         )
 
         assert result is not None

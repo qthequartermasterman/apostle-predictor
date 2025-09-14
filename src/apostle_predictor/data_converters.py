@@ -72,9 +72,7 @@ def biography_to_leader(bio_data: BiographyPageData) -> Leader | None:
         calling = Calling(
             calling_type=calling_type,
             start_date=call_date,
-            status=CallingStatus.CURRENT
-            if calling_data.activeCalling
-            else CallingStatus.FORMER,
+            status=CallingStatus.CURRENT if calling_data.activeCalling else CallingStatus.FORMER,
             seniority=calling_data.seniorityNumber,
         )
         leader_callings.append(calling)

@@ -34,10 +34,7 @@ def is_apostolic_leader(leader: Leader) -> bool:
     }
 
     for calling in leader.callings:
-        if (
-            calling.calling_type in apostolic_types
-            and calling.status == CallingStatus.CURRENT
-        ):
+        if calling.calling_type in apostolic_types and calling.status == CallingStatus.CURRENT:
             return True
     return False
 
@@ -54,10 +51,7 @@ def is_candidate_leader(leader: Leader) -> bool:
     }
 
     for calling in leader.callings:
-        if (
-            calling.calling_type in candidate_types
-            and calling.status == CallingStatus.CURRENT
-        ):
+        if calling.calling_type in candidate_types and calling.status == CallingStatus.CURRENT:
             return True
     return False
 
@@ -93,7 +87,8 @@ def get_leader_title(leader: Leader) -> str:
 
 
 def calculate_apostle_calling_age_probability(
-    age: int, bandwidth: float = 2.0,
+    age: int,
+    bandwidth: float = 2.0,
 ) -> float:
     """Calculate probability of being called as apostle at given age based on historical data.
 
@@ -239,7 +234,8 @@ def calculate_apostle_calling_age_probability(
 
 
 def select_new_apostle(
-    candidate_leaders: list[Leader], current_date: date,
+    candidate_leaders: list[Leader],
+    current_date: date,
 ) -> Leader | None:
     """Select a new apostle from candidates based on age probability distribution.
 
@@ -317,18 +313,12 @@ class SimulationResult:
 class VectorizedSimulationResult:
     """Results from vectorized simulation runs."""
 
-    death_times: (
-        np.ndarray
-    )  # Shape: (iterations, leaders) - days until death or -1 if survives
+    death_times: np.ndarray  # Shape: (iterations, leaders) - days until death or -1 if survives
     succession_events: (
         np.ndarray
     )  # Shape: (iterations, max_events, 4) - [day, leader_idx, event_type, details_idx]
-    final_prophet_idx: (
-        np.ndarray
-    )  # Shape: (iterations,) - index of final prophet in each iteration
-    prophet_changes: (
-        np.ndarray
-    )  # Shape: (iterations,) - number of prophet changes per iteration
+    final_prophet_idx: np.ndarray  # Shape: (iterations,) - index of final prophet in each iteration
+    prophet_changes: np.ndarray  # Shape: (iterations,) - number of prophet changes per iteration
     apostolic_changes: (
         np.ndarray
     )  # Shape: (iterations,) - number of apostolic changes per iteration
@@ -367,11 +357,13 @@ class VectorizedApostolicSimulation:
         last_known_rate = male_mortality[-1]
         for age in range(len(ages), self.max_age + 1):
             self.mortality_rates[age] = min(
-                0.95, last_known_rate * (1.05 ** (age - ages[-1])),
+                0.95,
+                last_known_rate * (1.05 ** (age - ages[-1])),
             )
 
     def _leaders_to_arrays(
-        self, leaders: list[Leader],
+        self,
+        leaders: list[Leader],
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, list[str]]:
         """Convert leader objects to numpy arrays for vectorized operations."""
         n_leaders = len(leaders)
@@ -439,7 +431,8 @@ class VectorizedApostolicSimulation:
                 calling_types[i] = calling_type_map[primary_calling.calling_type]
                 # Use apostolic seniority based on calling date, not scraped seniority
                 seniority[i] = self._calculate_apostolic_seniority(
-                    leader, primary_calling,
+                    leader,
+                    primary_calling,
                 )
             else:
                 calling_types[i] = calling_type_map[CallingType.GENERAL_AUTHORITY]
@@ -455,7 +448,9 @@ class VectorizedApostolicSimulation:
         )
 
     def _calculate_apostolic_seniority(
-        self, leader: Leader, primary_calling: Calling,
+        self,
+        leader: Leader,
+        primary_calling: Calling,
     ) -> int:
         """Calculate proper apostolic seniority based on calling date."""
         # Define known apostolic calling dates for seniority calculation
@@ -583,7 +578,11 @@ class VectorizedApostolicSimulation:
 
         # Calculate death times for all iterations simultaneously
         death_times = self._calculate_vectorized_death_times(
-            current_ages, random_array, n_days, unwell_mask, unwell_hazard_ratio,
+            current_ages,
+            random_array,
+            n_days,
+            unwell_mask,
+            unwell_hazard_ratio,
         )
 
         # Process succession events across all iterations
@@ -619,7 +618,9 @@ class VectorizedApostolicSimulation:
         """Calculate death times using vectorized operations."""
         iterations, n_leaders, _ = random_array.shape
         death_times = np.full(
-            (iterations, n_leaders), -1, dtype=int,
+            (iterations, n_leaders),
+            -1,
+            dtype=int,
         )  # -1 means survives
 
         # For each day, calculate who dies
@@ -681,9 +682,7 @@ class VectorizedApostolicSimulation:
 
             # Track monthly reporting
             next_monthly_report = (
-                30
-                if show_monthly_composition or show_succession_candidates
-                else n_days + 1
+                30 if show_monthly_composition or show_succession_candidates else n_days + 1
             )
 
             # Create alive mask and current prophet tracking
@@ -777,7 +776,9 @@ class VectorizedApostolicSimulation:
                     if np.any(apostolic_mask):
                         # Get seniority of living apostolic leaders
                         living_seniority = np.where(
-                            apostolic_mask, iteration_seniority, np.inf,
+                            apostolic_mask,
+                            iteration_seniority,
+                            np.inf,
                         )
                         current_prophet_idx = np.argmin(living_seniority)
                         presidency_start_day = death_day  # New president starts today
@@ -809,7 +810,8 @@ class VectorizedApostolicSimulation:
                                 days=int(death_day),
                             )
                             replacement_leader = select_new_apostle(
-                                living_candidates, simulation_date,
+                                living_candidates,
+                                simulation_date,
                             )
 
                             if replacement_leader:
@@ -822,58 +824,42 @@ class VectorizedApostolicSimulation:
 
                                 if replacement_idx is not None:
                                     # Update the replacement's calling type to Apostle
-                                    iteration_calling_types[replacement_idx] = (
-                                        2  # Apostle = 2
-                                    )
+                                    iteration_calling_types[replacement_idx] = 2  # Apostle = 2
 
                                     # Assign next available seniority (highest seniority number)
                                     apostolic_seniorities = iteration_seniority[
                                         iteration_calling_types <= 3
                                     ]  # Apostolic callings only
                                     if len(apostolic_seniorities) > 0:
-                                        next_seniority = (
-                                            np.max(apostolic_seniorities) + 1
-                                        )
+                                        next_seniority = np.max(apostolic_seniorities) + 1
                                     else:
                                         next_seniority = 1
-                                    iteration_seniority[replacement_idx] = (
-                                        next_seniority
-                                    )
+                                    iteration_seniority[replacement_idx] = next_seniority
 
                                     # Store replacement event for reporting (only show for first iteration)
                                     if iteration == 0 and hasattr(
-                                        self, "replacement_events",
+                                        self,
+                                        "replacement_events",
                                     ):
                                         replacement_age = (
-                                            (
-                                                simulation_date
-                                                - replacement_leader.birth_date
-                                            ).days
+                                            (simulation_date - replacement_leader.birth_date).days
                                             // 365
                                             if replacement_leader.birth_date
                                             else "Unknown"
                                         )
                                         # Get dead leader name from the original leaders list
-                                        if (
+                                        if original_leaders and 0 <= dead_leader_idx < len(
                                             original_leaders
-                                            and 0
-                                            <= dead_leader_idx
-                                            < len(original_leaders)
                                         ):
                                             dead_leader_name = original_leaders[
                                                 dead_leader_idx
                                             ].name
-                                        elif (
+                                        elif leader_names and 0 <= dead_leader_idx < len(
                                             leader_names
-                                            and 0 <= dead_leader_idx < len(leader_names)
                                         ):
-                                            dead_leader_name = leader_names[
-                                                dead_leader_idx
-                                            ]
+                                            dead_leader_name = leader_names[dead_leader_idx]
                                         else:
-                                            dead_leader_name = (
-                                                f"Leader_Index_{dead_leader_idx}"
-                                            )
+                                            dead_leader_name = f"Leader_Index_{dead_leader_idx}"
                                         replacement_title = get_leader_title(
                                             replacement_leader,
                                         )
@@ -917,9 +903,7 @@ class VectorizedApostolicSimulation:
                 next_monthly_report += 30
 
             # Record final presidency duration for surviving president
-            presidency_durations[iteration, current_prophet_idx] += (
-                n_days - presidency_start_day
-            )
+            presidency_durations[iteration, current_prophet_idx] += n_days - presidency_start_day
 
             prophet_changes[iteration] = changes_prophet
             apostolic_changes[iteration] = changes_apostolic
@@ -944,7 +928,9 @@ class VectorizedApostolicSimulation:
         }
 
     def _calculate_monthly_succession_probabilities(
-        self, leader_names: list[str], iterations: int,
+        self,
+        leader_names: list[str],
+        iterations: int,
     ) -> None:
         """Calculate real probabilities based on Monte Carlo simulation results."""
         self.monthly_succession_data = []
@@ -1006,7 +992,9 @@ class VectorizedApostolicSimulation:
             )
 
     def get_compatible_results(
-        self, vectorized_result: VectorizedSimulationResult, leader_names: list[str],
+        self,
+        vectorized_result: VectorizedSimulationResult,
+        leader_names: list[str],
     ) -> list[SimulationResult]:
         """Convert vectorized results back to compatible SimulationResult format."""
         compatible_results = []
@@ -1016,8 +1004,7 @@ class VectorizedApostolicSimulation:
             result = SimulationResult(
                 events=[],  # Simplified - could reconstruct if needed
                 final_apostles=[],  # Simplified - could reconstruct if needed
-                simulation_end_date=self.start_date
-                + timedelta(days=365 * 10),  # Estimate
+                simulation_end_date=self.start_date + timedelta(days=365 * 10),  # Estimate
                 prophet_changes=int(vectorized_result.prophet_changes[i]),
                 apostolic_changes=int(vectorized_result.apostolic_changes[i]),
             )
@@ -1055,7 +1042,8 @@ class VectorizedApostolicSimulation:
                     if original_leader.birth_date:
                         simulation_date = self.start_date + timedelta(days=day)
                         current_age = self._calculate_age(
-                            original_leader, simulation_date,
+                            original_leader,
+                            simulation_date,
                         )
                     elif original_leader.current_age:
                         years_passed = day // 365
@@ -1074,9 +1062,7 @@ class VectorizedApostolicSimulation:
                 else:  # Apostle or Acting President
                     sort_order = (2, seniority[i])
                     title = (
-                        f"Apostle (Seniority #{seniority[i]})"
-                        if seniority[i] < 999
-                        else "Apostle"
+                        f"Apostle (Seniority #{seniority[i]})" if seniority[i] < 999 else "Apostle"
                     )
                     succession_candidates.append(
                         (seniority[i], leader_names[i], current_age),
@@ -1099,7 +1085,8 @@ class VectorizedApostolicSimulation:
 
             # Show top 4
             for rank, (seniority_num, name, age) in enumerate(
-                succession_candidates[:4], 1,
+                succession_candidates[:4],
+                1,
             ):
                 age_str = f"Age {age}" if isinstance(age, int) else "Age N/A"
                 print(f"{rank}. {name:<25} | Seniority #{seniority_num:<2} | {age_str}")
@@ -1171,10 +1158,7 @@ class VectorizedSimulationAnalyzer:
                     break
 
             # If original prophet died, find who succeeded them
-            if (
-                original_prophet_idx is not None
-                and iteration_deaths[original_prophet_idx] != -1
-            ):
+            if original_prophet_idx is not None and iteration_deaths[original_prophet_idx] != -1:
                 # Find most senior living apostle
                 alive_mask = iteration_deaths == -1
                 apostolic_mask = (
@@ -1191,15 +1175,14 @@ class VectorizedSimulationAnalyzer:
 
                     if successor_idx < len(self.leader_names):
                         successor_name = self.leader_names[successor_idx]
-                        prophet_counts[successor_name] = (
-                            prophet_counts.get(successor_name, 0) + 1
-                        )
+                        prophet_counts[successor_name] = prophet_counts.get(successor_name, 0) + 1
 
         # Convert counts to probabilities
         return {name: count / self.iterations for name, count in prophet_counts.items()}
 
     def get_presidency_statistics(
-        self, leaders: list[Leader],
+        self,
+        leaders: list[Leader],
     ) -> dict[str, dict[str, float]]:
         """Calculate presidency statistics for each leader."""
         presidency_stats = {}

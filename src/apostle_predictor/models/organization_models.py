@@ -1,6 +1,5 @@
 """Pydantic models for parsing Organization collection page JSON data."""
 
-
 from pydantic import BaseModel
 
 

@@ -32,9 +32,7 @@ class CallingType(Enum):
     APOSTLE = "Apostle"
     PROPHET = "Prophet"
     COUNSELOR_FIRST_PRESIDENCY = "Counselor in First Presidency"
-    ACTING_PRESIDENT_QUORUM_TWELVE = (
-        "Acting President of the Quorum of the Twelve Apostles"
-    )
+    ACTING_PRESIDENT_QUORUM_TWELVE = "Acting President of the Quorum of the Twelve Apostles"
     SEVENTY = "Seventy"
     PRESIDING_BISHOP = "Presiding Bishop"
     GENERAL_AUTHORITY = "General Authority"
@@ -103,8 +101,7 @@ class Leader(pydantic.BaseModel):
 
         # Adjust for birthday not yet occurred this year
         if end_date.month < self.birth_date.month or (
-            end_date.month == self.birth_date.month
-            and end_date.day < self.birth_date.day
+            end_date.month == self.birth_date.month and end_date.day < self.birth_date.day
         ):
             age -= 1
 
@@ -114,8 +111,7 @@ class Leader(pydantic.BaseModel):
     def is_apostle(self) -> bool:
         """Check if currently serving as an apostle."""
         return any(
-            calling.calling_type == CallingType.APOSTLE
-            and calling.status == CallingStatus.CURRENT
+            calling.calling_type == CallingType.APOSTLE and calling.status == CallingStatus.CURRENT
             for calling in self.callings
         )
 
@@ -123,11 +119,7 @@ class Leader(pydantic.BaseModel):
     def years_as_apostle(self) -> float | None:
         """Calculate years served as apostle."""
         apostle_calling = next(
-            (
-                calling
-                for calling in self.callings
-                if calling.calling_type == CallingType.APOSTLE
-            ),
+            (calling for calling in self.callings if calling.calling_type == CallingType.APOSTLE),
             None,
         )
 
@@ -140,9 +132,7 @@ class Leader(pydantic.BaseModel):
 
     def get_calling_history(self, calling_type: CallingType) -> list[Calling]:
         """Get all callings of a specific type."""
-        return [
-            calling for calling in self.callings if calling.calling_type == calling_type
-        ]
+        return [calling for calling in self.callings if calling.calling_type == calling_type]
 
 
 class LeaderDataScraper:
@@ -261,8 +251,7 @@ class QuorumTracker:
                 (
                     calling.start_date
                     for calling in leader.callings
-                    if calling.calling_type == CallingType.APOSTLE
-                    and calling.start_date
+                    if calling.calling_type == CallingType.APOSTLE and calling.start_date
                 ),
                 date.max,
             ),
@@ -270,9 +259,7 @@ class QuorumTracker:
 
     def get_age_distribution(self) -> dict[str, float]:
         """Get age statistics for current apostles."""
-        ages = [
-            leader.age for leader in self.current_apostles if leader.age is not None
-        ]
+        ages = [leader.age for leader in self.current_apostles if leader.age is not None]
 
         if not ages:
             return {}
@@ -282,8 +269,7 @@ class QuorumTracker:
             "median": sorted(ages)[len(ages) // 2],
             "min": min(ages),
             "max": max(ages),
-            "std": (sum((age - sum(ages) / len(ages)) ** 2 for age in ages) / len(ages))
-            ** 0.5,
+            "std": (sum((age - sum(ages) / len(ages)) ** 2 for age in ages) / len(ages)) ** 0.5,
         }
 
     def export_to_dataframe(self) -> pd.DataFrame:
@@ -304,9 +290,7 @@ class QuorumTracker:
                     "name": leader.name,
                     "age": leader.age,
                     "birth_date": leader.birth_date,
-                    "calling_date": apostle_calling.start_date
-                    if apostle_calling
-                    else None,
+                    "calling_date": apostle_calling.start_date if apostle_calling else None,
                     "years_service": leader.years_as_apostle,
                     "conference_talks": len(leader.conference_talks)
                     if leader.conference_talks
