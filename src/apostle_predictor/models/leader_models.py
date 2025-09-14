@@ -176,6 +176,7 @@ class LeaderDataScraper:
         for url in leader_urls:
             try:
                 from apostle_predictor.data_converters import biography_to_leader
+
                 bio_data = self._parse_leader_biography(url)
                 leader = biography_to_leader(bio_data)
                 if leader:
@@ -223,6 +224,7 @@ class LeaderDataScraper:
 
     def _parse_leader_biography(self, url: str) -> BiographyPageData:
         """Parse an individual leader's biography page."""
+
         @auto_pydantic_cache.pydantic_cache
         def leader_biography_closure(url: str) -> BiographyPageData:
             response = self.client.get(url, follow_redirects=True)
@@ -314,5 +316,3 @@ class QuorumTracker:
             )
 
         return pd.DataFrame(data)
-
-
