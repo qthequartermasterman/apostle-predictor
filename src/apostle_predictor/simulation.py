@@ -558,7 +558,7 @@ class VectorizedApostolicSimulation:
 
         # Convert leaders to arrays
         (
-            birth_years,
+            _birth_years,
             current_ages,
             seniority,
             calling_types,
