@@ -4,6 +4,8 @@ from datetime import UTC, date, datetime
 
 import numpy as np
 
+
+
 from apostle_predictor.models.leader_models import (
     Calling,
     CallingStatus,
@@ -13,6 +15,7 @@ from apostle_predictor.models.leader_models import (
 from apostle_predictor.simulation import (
     VectorizedApostolicSimulation,
     VectorizedSimulationAnalyzer,
+    VectorizedSimulationResult,
     calculate_apostle_calling_age_probability,
     get_leader_title,
     is_apostolic_leader,
@@ -24,16 +27,16 @@ from apostle_predictor.simulation import (
 class TestVectorizedApostolicSimulation:
     """Test the VectorizedApostolicSimulation class."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.simulation = VectorizedApostolicSimulation()
 
-    def test_simulation_initialization(self):
+    def test_simulation_initialization(self) -> None:
         """Test that simulation initializes correctly."""
         assert self.simulation.start_date == datetime.now(UTC).date()
         assert self.simulation.actuary_data is not None
 
-    def test_leaders_to_arrays(self):
+    def test_leaders_to_arrays(self) -> None:
         """Test conversion of leaders to numpy arrays."""
         leaders = [
             Leader(
@@ -89,7 +92,7 @@ class TestVectorizedApostolicSimulation:
         assert calling_types[0] == 2  # APOSTLE
         assert calling_types[1] == 4  # GENERAL_AUTHORITY
 
-    def test_run_vectorized_monte_carlo_basic(self):
+    def test_run_vectorized_monte_carlo_basic(self) -> None:
         """Test basic vectorized Monte Carlo run."""
         # Create minimal test leaders
         leaders = [
@@ -139,22 +142,24 @@ class TestVectorizedApostolicSimulation:
 class TestVectorizedSimulationAnalyzer:
     """Test the VectorizedSimulationAnalyzer class."""
 
-    def test_analyzer_initialization(self):
+    def test_analyzer_initialization(self) -> None:
         """Test analyzer initializes with vectorized results."""
         # Create mock vectorized result
-        mock_result = type("MockResult", (), {})()
-        mock_result.prophet_changes = np.array([1, 2, 1])
-        mock_result.apostolic_changes = np.array([3, 4, 2])
-        mock_result.death_times = np.array(
-            [[-1, 50], [-1, -1], [100, -1]],
-        )  # -1 means survived
+        mock_result = VectorizedSimulationResult(
+            death_times=np.array([[-1, 50], [-1, -1], [100, -1]]),  # -1 means survived
+            succession_events=np.array([]),
+            final_prophet_idx=np.array([0, 1, 0]),
+            prophet_changes=np.array([1, 2, 1]),
+            apostolic_changes=np.array([3, 4, 2]),
+            presidency_durations=np.array([[100, 0], [0, 200], [50, 0]]),
+        )
 
         leaders = [
             Leader(name="Leader 1"),
             Leader(name="Leader 2"),
         ]
 
-        leader_names = np.array(["Leader 1", "Leader 2"])
+        leader_names = ["Leader 1", "Leader 2"]
         seniority = np.array([1, 2])
         calling_types = np.array([2, 2])  # Both apostles
 
@@ -169,20 +174,23 @@ class TestVectorizedSimulationAnalyzer:
         assert analyzer.result == mock_result
         assert len(analyzer.original_leaders) == 2
 
-    def test_get_survival_probabilities(self):
+    def test_get_survival_probabilities(self) -> None:
         """Test survival probability calculation from vectorized results."""
-        mock_result = type("MockResult", (), {})()
-        mock_result.prophet_changes = np.array([1, 2])
-        mock_result.apostolic_changes = np.array([3, 4])
-        # Leader 1 survives in both iterations, Leader 2 survives in first only
-        mock_result.death_times = np.array([[-1, 100], [-1, -1]])  # -1 means survived
+        mock_result = VectorizedSimulationResult(
+            death_times=np.array([[-1, 100], [-1, -1]]),  # -1 means survived
+            succession_events=np.array([]),
+            final_prophet_idx=np.array([0, 1]),
+            prophet_changes=np.array([1, 2]),
+            apostolic_changes=np.array([3, 4]),
+            presidency_durations=np.array([[100, 0], [0, 200]]),
+        )
 
         leaders = [
             Leader(name="Leader 1"),
             Leader(name="Leader 2"),
         ]
 
-        leader_names = np.array(["Leader 1", "Leader 2"])
+        leader_names = ["Leader 1", "Leader 2"]
         seniority = np.array([1, 2])
         calling_types = np.array([2, 2])  # Both apostles
 
@@ -199,17 +207,19 @@ class TestVectorizedSimulationAnalyzer:
         assert probabilities["Leader 1"] == 1.0  # Survived both runs
         assert probabilities["Leader 2"] == 0.5  # Survived 1 of 2 runs
 
-    def test_get_summary_statistics(self):
+    def test_get_summary_statistics(self) -> None:
         """Test summary statistics calculation from vectorized results."""
-        mock_result = type("MockResult", (), {})()
-        mock_result.prophet_changes = np.array([1, 2, 3])
-        mock_result.apostolic_changes = np.array([2, 4, 6])
-        mock_result.death_times = np.array(
-            [[-1, -1], [-1, 50], [100, -1]],
-        )  # -1 means survived
+        mock_result = VectorizedSimulationResult(
+            death_times=np.array([[-1, -1], [-1, 50], [100, -1]]),  # -1 means survived
+            succession_events=np.array([]),
+            final_prophet_idx=np.array([0, 1, 0]),
+            prophet_changes=np.array([1, 2, 3]),
+            apostolic_changes=np.array([2, 4, 6]),
+            presidency_durations=np.array([[100, 0], [0, 200], [150, 0]]),
+        )
 
         leaders = [Leader(name="Leader 1"), Leader(name="Leader 2")]
-        leader_names = np.array(["Leader 1", "Leader 2"])
+        leader_names = ["Leader 1", "Leader 2"]
         seniority = np.array([1, 2])
         calling_types = np.array([2, 2])  # Both apostles
 
@@ -233,7 +243,7 @@ class TestVectorizedSimulationAnalyzer:
 class TestLeaderClassificationFunctions:
     """Test leader classification utility functions."""
 
-    def test_is_apostolic_leader(self):
+    def test_is_apostolic_leader(self) -> None:
         """Test apostolic leader identification."""
         apostle = Leader(
             name="Apostle",
@@ -269,7 +279,7 @@ class TestLeaderClassificationFunctions:
         assert is_apostolic_leader(prophet) is True
         assert is_apostolic_leader(general_authority) is False
 
-    def test_is_candidate_leader(self):
+    def test_is_candidate_leader(self) -> None:
         """Test candidate leader identification."""
         apostle = Leader(
             name="Apostle",
@@ -294,7 +304,7 @@ class TestLeaderClassificationFunctions:
         assert is_candidate_leader(apostle) is False
         assert is_candidate_leader(general_authority) is True
 
-    def test_get_leader_title(self):
+    def test_get_leader_title(self) -> None:
         """Test leader title extraction."""
         apostle = Leader(
             name="Jeffrey R. Holland",
@@ -334,7 +344,7 @@ class TestLeaderClassificationFunctions:
 class TestApostleSelectionFunctions:
     """Test apostle selection and probability functions."""
 
-    def test_calculate_apostle_calling_age_probability(self):
+    def test_calculate_apostle_calling_age_probability(self) -> None:
         """Test age-based probability calculation."""
         # Test some typical apostle calling ages
         prob_55 = calculate_apostle_calling_age_probability(55)
@@ -348,7 +358,7 @@ class TestApostleSelectionFunctions:
         assert isinstance(prob_65, float)
         assert isinstance(prob_85, float)
 
-    def test_select_new_apostle(self):
+    def test_select_new_apostle(self) -> None:
         """Test apostle selection from candidates."""
         candidates = [
             Leader(

@@ -73,18 +73,9 @@ class Leader(pydantic.BaseModel):
     birth_date: date | None = None
     death_date: date | None = None
     current_age: int | None = None
-    callings: list[Calling] | None = None
-    conference_talks: list[ConferenceTalk] | None = None
-    assignments: list[str] | None = None  # Geographic or functional assignments
-
-    def __post_init__(self) -> None:
-        """Initialize default values for optional fields."""
-        if self.callings is None:
-            self.callings = []
-        if self.conference_talks is None:
-            self.conference_talks = []
-        if self.assignments is None:
-            self.assignments = []
+    callings: list[Calling] = pydantic.Field(default_factory=list)
+    conference_talks: list[ConferenceTalk] = pydantic.Field(default_factory=list)
+    assignments: list[str] = pydantic.Field(default_factory=list)  # Geographic or functional assignments
 
     @property
     def is_alive(self) -> bool:

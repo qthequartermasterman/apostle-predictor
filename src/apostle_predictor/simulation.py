@@ -940,6 +940,10 @@ class VectorizedApostolicSimulation:
         """Calculate real probabilities based on Monte Carlo simulation results."""
         self.monthly_succession_data = []
 
+        # Guard against None monthly_president_data
+        if self.monthly_president_data is None:
+            return
+
         # Sort monthly reporting days
         reporting_days = sorted(self.monthly_president_data.keys())
 
@@ -1230,14 +1234,14 @@ class VectorizedSimulationAnalyzer:
     def get_summary_statistics(self) -> dict[str, float]:
         """Get summary statistics across all simulations."""
         return {
-            "avg_prophet_changes": np.mean(self.result.prophet_changes),
-            "std_prophet_changes": np.std(self.result.prophet_changes),
-            "avg_apostolic_changes": np.mean(self.result.apostolic_changes),
-            "std_apostolic_changes": np.std(self.result.apostolic_changes),
-            "min_prophet_changes": np.min(self.result.prophet_changes),
-            "max_prophet_changes": np.max(self.result.prophet_changes),
-            "min_apostolic_changes": np.min(self.result.apostolic_changes),
-            "max_apostolic_changes": np.max(self.result.apostolic_changes),
+            "avg_prophet_changes": float(np.mean(self.result.prophet_changes)),
+            "std_prophet_changes": float(np.std(self.result.prophet_changes)),
+            "avg_apostolic_changes": float(np.mean(self.result.apostolic_changes)),
+            "std_apostolic_changes": float(np.std(self.result.apostolic_changes)),
+            "min_prophet_changes": float(np.min(self.result.prophet_changes)),
+            "max_prophet_changes": float(np.max(self.result.prophet_changes)),
+            "min_apostolic_changes": float(np.min(self.result.apostolic_changes)),
+            "max_apostolic_changes": float(np.max(self.result.apostolic_changes)),
         }
 
 

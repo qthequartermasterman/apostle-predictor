@@ -17,17 +17,17 @@ from apostle_predictor.models.leader_models import (
 class TestLeaderDataScraper:
     """Test the LeaderDataScraper class."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.scraper = LeaderDataScraper()
 
-    def test_scraper_initialization(self):
+    def test_scraper_initialization(self) -> None:
         """Test that scraper initializes correctly."""
         assert self.scraper.base_url == "https://www.churchofjesuschrist.org"
         assert self.scraper.client is not None
 
     @patch("apostle_predictor.models.leader_models.httpx.Client.get")
-    def test_get_organization_members_links_success(self, mock_get):
+    def test_get_organization_members_links_success(self, mock_get) -> None:
         """Test successful extraction of member links from organization page."""
         # Mock HTML with __NEXT_DATA__ JSON
         mock_html = """
@@ -52,7 +52,7 @@ class TestLeaderDataScraper:
         assert "dallin-h-oaks" in urls[1]
 
     @patch("apostle_predictor.models.leader_models.httpx.Client.get")
-    def test_get_seventies_links_success(self, mock_get):
+    def test_get_seventies_links_success(self, mock_get) -> None:
         """Test successful extraction of seventies links from API."""
         mock_api_response = {
             "data": [
@@ -85,7 +85,7 @@ class TestLeaderDataScraper:
         assert "elder-test2" in urls[1]
 
     @patch("apostle_predictor.models.leader_models.httpx.Client.get")
-    def test_parse_leader_biography_success(self, mock_get):
+    def test_parse_leader_biography_success(self, mock_get) -> None:
         """Test that biography parsing returns BiographyPageData."""
         # Mock HTML with __NEXT_DATA__ JSON
         mock_html = """
@@ -116,7 +116,7 @@ class TestLeaderDataScraper:
 class TestDataConverters:
     """Test the data converter functions."""
 
-    def test_biography_to_leader_basic(self):
+    def test_biography_to_leader_basic(self) -> None:
         """Test basic conversion from BiographyPageData to Leader."""
         # Mock minimal BiographyPageData structure
         mock_bio = Mock()
@@ -138,7 +138,7 @@ class TestDataConverters:
         assert leader.birth_date == date(1924, 9, 9)
         assert leader.current_age is not None
 
-    def test_biography_to_leader_no_person(self):
+    def test_biography_to_leader_no_person(self) -> None:
         """Test converter when no person data available."""
         mock_bio = Mock()
         mock_bio.props.pageProps.contentPerson = []
@@ -147,7 +147,7 @@ class TestDataConverters:
 
         assert leader is None
 
-    def test_biography_to_leader_with_callings(self):
+    def test_biography_to_leader_with_callings(self) -> None:
         """Test converter with calling information."""
         mock_bio = Mock()
         mock_bio.props.pageProps.contentPerson = [Mock()]
@@ -184,12 +184,12 @@ class TestDataConverters:
 class TestWebScrapingIntegration:
     """Integration tests for web scraping (requires network access)."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.scraper = LeaderDataScraper()
 
     @pytest.mark.slow
-    def test_scrape_general_authorities_real(self):
+    def test_scrape_general_authorities_real(self) -> None:
         """Test scraping actual General Authority data."""
         leaders = self.scraper.scrape_general_authorities()
 
@@ -210,7 +210,7 @@ class TestWebScrapingIntegration:
         assert current_calling_count >= 15
 
     @pytest.mark.slow
-    def test_get_seventies_links_real(self):
+    def test_get_seventies_links_real(self) -> None:
         """Test getting actual seventies data from API."""
         # Test the public interface method instead of protected method
         scraper = LeaderDataScraper()

@@ -170,7 +170,7 @@ def display_unwell_leaders(
         _calling_types,
         unwell_mask,
         leader_names,
-    ) = simulation.get_leader_arrays(complete_leaders)
+    ) = simulation._leaders_to_arrays(complete_leaders)
 
     # Display unwell leaders
     unwell_leaders = [leader_names[i] for i in range(len(leader_names)) if unwell_mask[i]]
