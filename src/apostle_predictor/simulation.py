@@ -1039,14 +1039,18 @@ class VectorizedApostolicSimulation:
             iteration_deaths = death_times[iteration]
             changes_prophet = 0
             changes_apostolic = 0
-            
+
             # Track monthly reporting
             next_monthly_report = 30 if show_monthly_composition or show_succession_candidates else n_days + 1
-            
+
             # Create alive mask and current prophet tracking
             alive = np.ones(n_leaders, dtype=bool)
             current_prophet_idx = np.where(calling_types == 0)[0]  # Prophet = 0
-            
+
+            # Create working copies of calling_types and seniority that can be modified during iteration
+            iteration_calling_types = calling_types.copy()
+            iteration_seniority = seniority.copy()
+
             # Track presidency durations for this iteration
             presidency_start_day = 0  # When current president started
             
@@ -1054,9 +1058,9 @@ class VectorizedApostolicSimulation:
                 current_prophet_idx = current_prophet_idx[0]
             else:
                 # If no current prophet, find most senior apostle
-                apostle_mask = (calling_types == 2) | (calling_types == 1) | (calling_types == 3)
+                apostle_mask = (iteration_calling_types == 2) | (iteration_calling_types == 1) | (iteration_calling_types == 3)
                 if np.any(apostle_mask):
-                    senior_apostle = np.argmin(np.where(apostle_mask, seniority, np.inf))
+                    senior_apostle = np.argmin(np.where(apostle_mask, iteration_seniority, np.inf))
                     current_prophet_idx = senior_apostle
                 else:
                     current_prophet_idx = 0
@@ -1097,21 +1101,55 @@ class VectorizedApostolicSimulation:
                 if dead_leader_idx == current_prophet_idx:
                     # Record duration for outgoing prophet
                     presidency_durations[iteration, current_prophet_idx] += death_day - presidency_start_day
-                    
+
                     changes_prophet += 1
-                    
+
                     # Find next prophet (most senior living apostle)
-                    apostolic_mask = alive & ((calling_types == 2) | (calling_types == 1) | (calling_types == 3))
-                    
+                    apostolic_mask = alive & ((iteration_calling_types == 2) | (iteration_calling_types == 1) | (iteration_calling_types == 3))
+
                     if np.any(apostolic_mask):
                         # Get seniority of living apostolic leaders
-                        living_seniority = np.where(apostolic_mask, seniority, np.inf)
+                        living_seniority = np.where(apostolic_mask, iteration_seniority, np.inf)
                         current_prophet_idx = np.argmin(living_seniority)
                         presidency_start_day = death_day  # New president starts today
-                
-                # Any apostolic death triggers a replacement
-                if calling_types[dead_leader_idx] in [0, 1, 2, 3]:  # Apostolic callings
+
+                # Handle apostolic death and replacement
+                if iteration_calling_types[dead_leader_idx] in [0, 1, 2, 3]:  # Apostolic callings
                     changes_apostolic += 1
+
+                    # Find living candidates for apostle replacement
+                    if original_leaders:
+                        living_candidates = []
+                        for leader_idx in range(n_leaders):
+                            if (alive[leader_idx] and
+                                iteration_calling_types[leader_idx] == 4 and  # General Authority = 4
+                                leader_idx < len(original_leaders)):
+                                living_candidates.append(original_leaders[leader_idx])
+
+                        # Select replacement using age-based probability
+                        if living_candidates:
+                            simulation_date = self.start_date + timedelta(days=int(death_day))
+                            replacement_leader = select_new_apostle(living_candidates, simulation_date)
+
+                            if replacement_leader:
+                                # Find the index of the replacement leader
+                                replacement_idx = None
+                                for idx, leader in enumerate(original_leaders):
+                                    if leader is replacement_leader:
+                                        replacement_idx = idx
+                                        break
+
+                                if replacement_idx is not None:
+                                    # Update the replacement's calling type to Apostle
+                                    iteration_calling_types[replacement_idx] = 2  # Apostle = 2
+
+                                    # Assign next available seniority (highest seniority number)
+                                    apostolic_seniorities = iteration_seniority[iteration_calling_types <= 3]  # Apostolic callings only
+                                    if len(apostolic_seniorities) > 0:
+                                        next_seniority = np.max(apostolic_seniorities) + 1
+                                    else:
+                                        next_seniority = 1
+                                    iteration_seniority[replacement_idx] = next_seniority
             
             # Handle any remaining monthly reports after all deaths processed
             while next_monthly_report <= n_days:
@@ -1121,12 +1159,12 @@ class VectorizedApostolicSimulation:
                         self.monthly_president_data[next_monthly_report] = []
                     self.monthly_president_data[next_monthly_report].append(current_prophet_idx)
                 
-                # Display composition only for first iteration 
+                # Display composition only for first iteration
                 if show_monthly_composition and iteration == 0 and leader_names:
                     self._display_vectorized_monthly_composition(
-                        alive, calling_types, seniority, leader_names, next_monthly_report,
+                        alive, iteration_calling_types, iteration_seniority, leader_names, next_monthly_report,
                         show_succession_candidates=show_succession_candidates,
-                        original_leaders=self.original_leaders if hasattr(self, 'original_leaders') else None
+                        original_leaders=original_leaders
                     )
                 next_monthly_report += 30
             
