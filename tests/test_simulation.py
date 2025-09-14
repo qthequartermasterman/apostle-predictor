@@ -4,8 +4,6 @@ from datetime import UTC, date, datetime
 
 import numpy as np
 
-
-
 from apostle_predictor.models.leader_models import (
     Calling,
     CallingStatus,

@@ -75,7 +75,8 @@ class Leader(pydantic.BaseModel):
     current_age: int | None = None
     callings: list[Calling] = pydantic.Field(default_factory=list)
     conference_talks: list[ConferenceTalk] = pydantic.Field(default_factory=list)
-    assignments: list[str] = pydantic.Field(default_factory=list)  # Geographic or functional assignments
+    assignments: list[str] = pydantic.Field(default_factory=list)
+    """Geographic or functional assignments"""
 
     @property
     def is_alive(self) -> bool:

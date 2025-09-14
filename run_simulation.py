@@ -170,7 +170,7 @@ def display_unwell_leaders(
         _calling_types,
         unwell_mask,
         leader_names,
-    ) = simulation._leaders_to_arrays(complete_leaders)
+    ) = simulation._leaders_to_arrays(complete_leaders)  # noqa: SLF001
 
     # Display unwell leaders
     unwell_leaders = [leader_names[i] for i in range(len(leader_names)) if unwell_mask[i]]
@@ -226,7 +226,7 @@ def main() -> None:
         _current_ages,
         seniority,
         calling_types,
-        unwell_mask,
+        _unwell_mask,
         leader_names,
     ) = simulation._leaders_to_arrays(complete_leaders)  # noqa: SLF001
 
