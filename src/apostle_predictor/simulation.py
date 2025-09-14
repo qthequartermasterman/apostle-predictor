@@ -20,6 +20,22 @@ from apostle_predictor.models.leader_models import (
     Leader,
 )
 
+# Conference Talk Probability Multipliers
+CONFERENCE_TALK_MULTIPLIERS = {
+    "NONE": 0.3,  # 0 talks - low but not zero probability
+    "FEW": 0.7,  # 1-5 talks - below average probability
+    "AVERAGE": 1.0,  # 6-15 talks - baseline probability
+    "MANY": 1.5,  # 16-25 talks - above average probability
+    "EXTENSIVE": 2.0,  # 25+ talks - very high probability
+}
+
+# Conference Talk Count Thresholds
+TALK_THRESHOLDS = {
+    "FEW": 5,
+    "AVERAGE": 15,
+    "MANY": 25,
+}
+
 
 def is_apostolic_leader(leader: Leader) -> bool:
     """Check if a leader holds an apostolic calling.
@@ -246,24 +262,21 @@ def calculate_conference_talk_probability(conference_talk_count: int) -> float:
         conference_talk_count: Number of conference talks given before calling
 
     Returns:
-        Probability multiplier (0.1 to 2.0) based on conference talk experience
+        Probability multiplier (0.3 to 2.0) based on conference talk experience
     """
-    # Historical analysis suggests:
-    # 0 talks: Very low probability (but not zero - some apostles had few talks)
-    # 1-5 talks: Below average probability
-    # 6-15 talks: Average probability
-    # 16-25 talks: Above average probability
-    # 25+ talks: Very high probability (extensive experience)
+    # Handle edge cases - negative counts should be treated as zero
+    conference_talk_count = max(conference_talk_count, 0)
 
+    # Use defined constants for probability calculations
     if conference_talk_count == 0:
-        return 0.3  # Low but not zero
-    if conference_talk_count <= 5:
-        return 0.7  # Below average
-    if conference_talk_count <= 15:
-        return 1.0  # Average/baseline
-    if conference_talk_count <= 25:
-        return 1.5  # Above average
-    return 2.0  # Very high probability
+        return CONFERENCE_TALK_MULTIPLIERS["NONE"]
+    if conference_talk_count <= TALK_THRESHOLDS["FEW"]:
+        return CONFERENCE_TALK_MULTIPLIERS["FEW"]
+    if conference_talk_count <= TALK_THRESHOLDS["AVERAGE"]:
+        return CONFERENCE_TALK_MULTIPLIERS["AVERAGE"]
+    if conference_talk_count <= TALK_THRESHOLDS["MANY"]:
+        return CONFERENCE_TALK_MULTIPLIERS["MANY"]
+    return CONFERENCE_TALK_MULTIPLIERS["EXTENSIVE"]
 
 
 def select_new_apostle(
@@ -294,7 +307,7 @@ def select_new_apostle(
             age_probability = calculate_apostle_calling_age_probability(age)
 
             # Calculate conference talk probability multiplier
-            talk_count = len(candidate.conference_talks) if candidate.conference_talks else 0
+            talk_count = len(candidate.conference_talks)
             talk_multiplier = calculate_conference_talk_probability(talk_count)
 
             # Combined probability = age_probability * conference_talk_multiplier

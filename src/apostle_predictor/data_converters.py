@@ -1,6 +1,7 @@
 """Functions to convert between Pydantic models and Leader objects."""
 
 import contextlib
+import hashlib
 import random
 from datetime import UTC, date, datetime
 
@@ -105,8 +106,8 @@ def _generate_conference_talks_data(name: str, callings: list[Calling]) -> list[
     This is a placeholder implementation using historical data patterns.
     In a real implementation, this would scrape actual conference talk data.
     """
-    # Use name as seed for deterministic random generation
-    name_seed = hash(name) % (2**32)
+    # Use stable SHA256 hash of name as seed for deterministic random generation
+    name_seed = int(hashlib.sha256(name.encode()).hexdigest()[:8], 16)
     rng = random.Random(name_seed)
 
     # Historical data: Average conference talks given before apostolic calling
@@ -154,9 +155,24 @@ def _generate_conference_talks_data(name: str, callings: list[Calling]) -> list[
             # Generate semi-annual conference dates (April and October)
             year = rng.randint(start_date.year, end_date.year)
             month = rng.choice([4, 10])  # April or October
-            day = rng.randint(1, 7)  # Conference is usually first weekend
 
-            talk_date = date(year, month, day)
+            # Generate valid conference dates (first weekend of April/October)
+            # Use the first Saturday as a safe starting point
+            try:
+                # First Saturday is typically between days 1-7
+                for day_attempt in range(1, 8):
+                    try:
+                        talk_date = date(year, month, day_attempt)
+                        # Use the first valid date we can create
+                        break
+                    except ValueError:
+                        continue
+                else:
+                    # Fallback to day 1 if all attempts fail (should never happen for April/October)
+                    talk_date = date(year, month, 1)
+            except ValueError:
+                # Ultimate fallback (should never reach here)
+                talk_date = date(year, 4, 1)
             session = rng.choice(
                 [
                     "Saturday Morning",
