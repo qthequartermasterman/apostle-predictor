@@ -1,5 +1,6 @@
 """Tests for web scraping functionality."""
 
+import uuid
 from datetime import date
 from unittest.mock import Mock, patch
 
@@ -102,8 +103,9 @@ class TestLeaderDataScraper:
         mock_response.raise_for_status = Mock()
         mock_get.return_value = mock_response
 
-        # Test URL needs proper protocol
-        full_url = "https://www.churchofjesuschrist.org/learn/test-leader"
+        # Test URL needs proper protocol - use unique URL to avoid cache conflicts
+        unique_id = str(uuid.uuid4())
+        full_url = f"https://www.churchofjesuschrist.org/learn/test-leader-{unique_id}"
         result = self.scraper._parse_leader_biography(full_url)
 
         # Should return BiographyPageData object
