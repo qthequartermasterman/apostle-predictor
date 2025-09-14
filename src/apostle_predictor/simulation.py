@@ -16,6 +16,71 @@ from apostle_predictor.models.leader_models import Leader, CallingType, CallingS
 from apostle_predictor.actuary_table import ACTUARY_DATAFRAME
 
 
+def is_apostolic_leader(leader: Leader) -> bool:
+    """Check if a leader holds an apostolic calling (Prophet, Counselor, Apostle, Acting President)."""
+    if not leader.callings:
+        return False
+
+    apostolic_types = {
+        CallingType.PROPHET,
+        CallingType.COUNSELOR_FIRST_PRESIDENCY,
+        CallingType.APOSTLE,
+        CallingType.ACTING_PRESIDENT_QUORUM_TWELVE,
+    }
+
+    for calling in leader.callings:
+        if (calling.calling_type in apostolic_types and
+            calling.status == CallingStatus.CURRENT):
+            return True
+    return False
+
+
+def is_candidate_leader(leader: Leader) -> bool:
+    """Check if a leader is a candidate for apostle calling (non-apostolic General Authority)."""
+    if not leader.callings:
+        return False
+
+    candidate_types = {
+        CallingType.GENERAL_AUTHORITY,
+        CallingType.PRESIDING_BISHOP,
+        CallingType.SEVENTY,
+    }
+
+    for calling in leader.callings:
+        if (calling.calling_type in candidate_types and
+            calling.status == CallingStatus.CURRENT):
+            return True
+    return False
+
+
+def get_leader_title(leader: Leader) -> str:
+    """Get the appropriate title for a leader based on their calling."""
+    if not leader.callings:
+        return "Brother"
+
+    # Find current calling
+    current_calling = None
+    for calling in leader.callings:
+        if calling.status == CallingStatus.CURRENT:
+            current_calling = calling
+            break
+
+    if not current_calling:
+        return "Brother"
+
+    # Return appropriate title
+    if current_calling.calling_type == CallingType.PRESIDING_BISHOP:
+        return "Bishop"
+    elif current_calling.calling_type in {
+        CallingType.PROPHET, CallingType.COUNSELOR_FIRST_PRESIDENCY,
+        CallingType.APOSTLE, CallingType.ACTING_PRESIDENT_QUORUM_TWELVE,
+        CallingType.GENERAL_AUTHORITY, CallingType.SEVENTY
+    }:
+        return "Elder"
+    else:
+        return "Brother"
+
+
 class SimulationEvent(Enum):
     """Types of events that can occur in the simulation."""
 
