@@ -3,6 +3,7 @@
 
 import argparse
 import sys
+from typing import Any
 
 # Add src to path so we can import our modules
 sys.path.append("src")
@@ -10,6 +11,7 @@ sys.path.append("src")
 from apostle_predictor.models.leader_models import (
     CallingStatus,
     CallingType,
+    Leader,
     LeaderDataScraper,
 )
 from apostle_predictor.simulation import (
@@ -18,8 +20,8 @@ from apostle_predictor.simulation import (
 )
 
 
-def main():
-    """Main CLI interface."""
+def create_argument_parser() -> argparse.ArgumentParser:
+    """Create and configure the command line argument parser."""
     parser = argparse.ArgumentParser(
         description="Run Monte Carlo simulations for apostolic succession",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -45,7 +47,9 @@ Examples:
     )
 
     parser.add_argument(
-        "--detailed", action="store_true", help="Show detailed results for each apostle",
+        "--detailed",
+        action="store_true",
+        help="Show detailed results for each apostle",
     )
 
     parser.add_argument("--seed", type=int, help="Random seed for reproducible results")
@@ -69,16 +73,14 @@ Examples:
         help="Mortality hazard ratio multiplier for leaders marked as unwell (default: 3.0)",
     )
 
-    args = parser.parse_args()
+    return parser
 
-    print("🏛️  Apostle Predictor - Monte Carlo Simulation")
-    print("=" * 50)
 
-    # Step 1: Scrape current leadership data
+def load_leadership_data() -> list[Leader]:
+    """Load and validate leadership data from church sources."""
     print("\n📡 Scraping current church leadership data...")
     scraper = LeaderDataScraper()
     all_leaders = scraper.scrape_general_authorities()
-
     print(f"✅ Found {len(all_leaders)} total leaders from all organizations")
 
     # Validate that we have all the required data
@@ -95,7 +97,7 @@ Examples:
                         CallingType.COUNSELOR_FIRST_PRESIDENCY,
                         CallingType.APOSTLE,
                         CallingType.ACTING_PRESIDENT_QUORUM_TWELVE,
-                        CallingType.GENERAL_AUTHORITY,  # Include all General Authorities as candidates
+                        CallingType.GENERAL_AUTHORITY,  # Include all GAs as candidates
                         CallingType.PRESIDING_BISHOP,
                         CallingType.SEVENTY,
                     ]
@@ -108,8 +110,11 @@ Examples:
                 complete_leaders.append(leader)
 
     print(f"✅ Found {len(complete_leaders)} total leaders with complete data")
+    return complete_leaders
 
-    # Count by calling type
+
+def display_leadership_composition(complete_leaders: list[Leader]) -> None:
+    """Display current leadership composition statistics."""
     calling_counts = {}
     for leader in complete_leaders:
         for calling in leader.callings:
@@ -121,10 +126,12 @@ Examples:
     for calling_type, count in sorted(calling_counts.items()):
         print(f"   {calling_type}: {count}")
 
-    # Step 2: Run simulation
-    print(
-        f"\n🚀 Running {args.iterations} Monte Carlo simulations for {args.years} years...",
-    )
+
+def run_simulation_with_args(
+    args: argparse.Namespace, complete_leaders: list[Leader]
+) -> tuple[VectorizedApostolicSimulation, Any]:
+    """Run the Monte Carlo simulation with the provided arguments."""
+    print(f"\n🚀 Running {args.iterations} Monte Carlo simulations for {args.years} years...")
 
     # Show unwell hazard ratio if not default
     if args.unwell_hazard_ratio != 3.0:
@@ -147,39 +154,82 @@ Examples:
         unwell_hazard_ratio=args.unwell_hazard_ratio,
     )
 
-    # Get the arrays from the simulation for the analyzer
+    return simulation, vectorized_result
+
+
+def display_unwell_leaders(
+    simulation: VectorizedApostolicSimulation,
+    complete_leaders: list[Leader],
+    args: argparse.Namespace,
+) -> None:
+    """Display leaders marked as unwell with their hazard ratio."""
     (
-        birth_years,
-        current_ages,
-        seniority,
-        calling_types,
+        _birth_years,
+        _current_ages,
+        _seniority,
+        _calling_types,
         unwell_mask,
         leader_names,
-    ) = simulation._leaders_to_arrays(complete_leaders)
+    ) = simulation._leaders_to_arrays(complete_leaders)  # noqa: SLF001
 
     # Display unwell leaders
-    unwell_leaders = [
-        leader_names[i] for i in range(len(leader_names)) if unwell_mask[i]
-    ]
+    unwell_leaders = [leader_names[i] for i in range(len(leader_names)) if unwell_mask[i]]
     if unwell_leaders:
+        unwell_list = ", ".join(unwell_leaders)
         print(
-            f"🏥 Leaders marked as unwell (hazard ratio {args.unwell_hazard_ratio}x): {', '.join(unwell_leaders)}",
+            f"🏥 Leaders marked as unwell (hazard ratio {args.unwell_hazard_ratio}x): {unwell_list}"
         )
 
-    # Display replacement events if any occurred
+
+def display_replacement_events(simulation: VectorizedApostolicSimulation) -> None:
+    """Display apostolic replacement events if any occurred."""
     if hasattr(simulation, "replacement_events") and simulation.replacement_events:
         print("\n🔄 APOSTLE REPLACEMENT EVENTS")
         print("-" * 60)
         for event in simulation.replacement_events:
-            print(
-                f"Day {event['day']:4} ({event['date'].strftime('%Y-%m-%d')}): "
+            event_date = event["date"].strftime("%Y-%m-%d")
+            replacement_info = (
                 f"{event['replacement_title']} {event['replacement_name']} "
-                f"(age {event['replacement_age']}) called as apostle to replace {event['replaced_leader']}",
+                f"(age {event['replacement_age']}) called as apostle to replace "
+                f"{event['replaced_leader']}"
             )
+            print(f"Day {event['day']:4} ({event_date}): {replacement_info}")
         print()
+
+
+def main() -> None:
+    """Main CLI interface."""
+    parser = create_argument_parser()
+    args = parser.parse_args()
+
+    print("🏛️  Apostle Predictor - Monte Carlo Simulation")
+    print("=" * 50)
+
+    # Step 1: Load leadership data
+    complete_leaders = load_leadership_data()
+
+    # Display leadership composition
+    display_leadership_composition(complete_leaders)
+
+    # Step 2: Run simulation
+    simulation, vectorized_result = run_simulation_with_args(args, complete_leaders)
+
+    # Display unwell leaders and replacement events
+    display_unwell_leaders(simulation, complete_leaders, args)
+    display_replacement_events(simulation)
 
     # Step 3: Analyze results
     print("\n📊 Analyzing results...")
+    # Get the arrays from the simulation for the analyzer
+    (
+        _birth_years,
+        _current_ages,
+        seniority,
+        calling_types,
+        _unwell_mask,
+        leader_names,
+    ) = simulation._leaders_to_arrays(complete_leaders)  # noqa: SLF001
+
     # Use specialized vectorized analyzer
     analyzer = VectorizedSimulationAnalyzer(
         vectorized_result=vectorized_result,
@@ -243,12 +293,13 @@ Examples:
 
     print("\n🏆 SUCCESSION PROBABILITIES (Probability of becoming Prophet)")
     print("-" * 60)
-    for leader, sort_key, title in leaders_by_hierarchy:
+    for leader, _sort_key, title in leaders_by_hierarchy:
         succession_prob = succession_probs.get(leader.name, 0.0) * 100
         survival_prob = survival_probs.get(leader.name, 0.0) * 100
 
         print(
-            f"{title:15} | {leader.name:25} | Prophet: {succession_prob:5.1f}% | Survival: {survival_prob:5.1f}%",
+            f"{title:15} | {leader.name:25} | Prophet: {succession_prob:5.1f}% | "
+            f"Survival: {survival_prob:5.1f}%",
         )
 
     # Show presidency statistics for vectorized simulations
@@ -259,20 +310,21 @@ Examples:
             f"{'Title':15} | {'Name':25} | {'Ever Pres':9} | {'Mean Years':10} | {'Std Years':9}",
         )
         print("-" * 80)
-        for leader, sort_key, title in leaders_by_hierarchy:
+        for leader, _sort_key, title in leaders_by_hierarchy:
             stats = presidency_stats.get(leader.name, {})
             ever_president_pct = stats.get("probability_of_presidency", 0.0) * 100
             mean_years = stats.get("mean_presidency_years", 0.0)
             std_years = stats.get("std_presidency_years", 0.0)
 
             print(
-                f"{title:15} | {leader.name:25} | {ever_president_pct:8.1f}% | {mean_years:9.2f} | {std_years:8.2f}",
+                f"{title:15} | {leader.name:25} | {ever_president_pct:8.1f}% | "
+                f"{mean_years:9.2f} | {std_years:8.2f}",
             )
 
     if args.detailed:
         print("\n👴 DETAILED LEADER INFORMATION")
         print("-" * 60)
-        for leader, sort_key, title in leaders_by_hierarchy:
+        for leader, _sort_key, title in leaders_by_hierarchy:
             current_age = leader.current_age
 
             # Find key calling for call date
@@ -300,16 +352,20 @@ Examples:
     print("\n📋 SUMMARY STATISTICS")
     print("-" * 60)
     print(
-        f"Average Prophet Changes: {summary_stats['avg_prophet_changes']:.1f} ± {summary_stats['std_prophet_changes']:.1f}",
+        f"Average Prophet Changes: {summary_stats['avg_prophet_changes']:.1f} ± "
+        f"{summary_stats['std_prophet_changes']:.1f}",
     )
     print(
-        f"Range: {summary_stats['min_prophet_changes']:.0f} - {summary_stats['max_prophet_changes']:.0f}",
+        f"Range: {summary_stats['min_prophet_changes']:.0f} - "
+        f"{summary_stats['max_prophet_changes']:.0f}",
     )
     print(
-        f"\nAverage Apostolic Changes: {summary_stats['avg_apostolic_changes']:.1f} ± {summary_stats['std_apostolic_changes']:.1f}",
+        f"\nAverage Apostolic Changes: {summary_stats['avg_apostolic_changes']:.1f} ± "
+        f"{summary_stats['std_apostolic_changes']:.1f}",
     )
     print(
-        f"Range: {summary_stats['min_apostolic_changes']:.0f} - {summary_stats['max_apostolic_changes']:.0f}",
+        f"Range: {summary_stats['min_apostolic_changes']:.0f} - "
+        f"{summary_stats['max_apostolic_changes']:.0f}",
     )
 
     # Insights
@@ -319,7 +375,8 @@ Examples:
     # Most likely next prophet
     most_likely_prophet = max(succession_probs.items(), key=lambda x: x[1])
     print(
-        f"• Most likely next Prophet: {most_likely_prophet[0]} ({most_likely_prophet[1] * 100:.1f}%)",
+        f"• Most likely next Prophet: {most_likely_prophet[0]} "
+        f"({most_likely_prophet[1] * 100:.1f}%)",
     )
 
     # Oldest leader
@@ -343,38 +400,38 @@ Examples:
         )
 
     # Show monthly succession summary if succession candidates were shown
-    if args.show_succession_candidates:
-        if (
-            hasattr(simulation, "monthly_succession_data")
-            and simulation.monthly_succession_data
-        ):
-            print("\n📊 MONTHLY SUCCESSION SUMMARY")
-            print("-" * 140)
-            header = f"{'Month':>15} | "
-            for i in range(4):
-                header += f"{'Name ' + str(i + 1):<18} | {'Prob':<4} | {'Age':<3}"
-                if i < 3:
-                    header += " | "
-            print(header)
-            print("-" * 140)
+    if (
+        args.show_succession_candidates
+        and hasattr(simulation, "monthly_succession_data")
+        and simulation.monthly_succession_data
+    ):
+        print("\n📊 MONTHLY SUCCESSION SUMMARY")
+        print("-" * 140)
+        header = f"{'Month':>15} | "
+        for i in range(4):
+            header += f"{'Name ' + str(i + 1):<18} | {'Prob':<4} | {'Age':<3}"
+            if i < 3:
+                header += " | "
+        print(header)
+        print("-" * 140)
 
-            for data in simulation.monthly_succession_data:
-                row = f"{data['month']:>15} | "
-                candidates = data.get("candidates", [])
-                for i in range(4):
-                    if i < len(candidates):
-                        candidate = candidates[i]
-                        name = (
-                            candidate["name"][:17] + "."
-                            if len(candidate["name"]) > 18
-                            else candidate["name"]
-                        )
-                        row += f"{name:<18} | {candidate['probability']:<4} | {candidate['age']!s:<3}"
-                    else:
-                        row += f"{'--':<18} | {'--':<4} | {'--':<3}"
-                    if i < 3:
-                        row += " | "
-                print(row)
+        for data in simulation.monthly_succession_data:
+            row = f"{data['month']:>15} | "
+            candidates = data.get("candidates", [])
+            for i in range(4):
+                if i < len(candidates):
+                    candidate = candidates[i]
+                    name = (
+                        candidate["name"][:17] + "."
+                        if len(candidate["name"]) > 18
+                        else candidate["name"]
+                    )
+                    row += f"{name:<18} | {candidate['probability']:<4} | {candidate['age']!s:<3}"
+                else:
+                    row += f"{'--':<18} | {'--':<4} | {'--':<3}"
+                if i < 3:
+                    row += " | "
+            print(row)
 
     print("\n✨ Simulation completed successfully!")
 

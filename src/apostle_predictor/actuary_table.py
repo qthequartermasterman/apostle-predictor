@@ -7,7 +7,9 @@ Number of lives b
 
  a Probability of dying within one year.
  b Number of survivors out of 100,000 born alive.
- Note: The period life expectancy at a given age for 2022 is the average remaining number of years expected prior to death for a person at that exact age, born on January 1, using the mortality rates for 2022 over the course of his or her remaining life.
+ Note: The period life expectancy at a given age for 2022 is the average remaining number of
+years expected prior to death for a person at that exact age, born on January 1, using the
+mortality rates for 2022 over the course of his or her remaining life.
 """
 
 import pandas as pd
