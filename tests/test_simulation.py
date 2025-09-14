@@ -1,6 +1,6 @@
 """Tests for vectorized simulation functionality."""
 
-from datetime import date
+from datetime import UTC, date, datetime
 
 import numpy as np
 
@@ -30,7 +30,7 @@ class TestVectorizedApostolicSimulation:
 
     def test_simulation_initialization(self):
         """Test that simulation initializes correctly."""
-        assert self.simulation.start_date == date.today()
+        assert self.simulation.start_date == datetime.now(UTC).date()
         assert self.simulation.actuary_data is not None
 
     def test_leaders_to_arrays(self):

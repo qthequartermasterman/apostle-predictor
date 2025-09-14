@@ -11,7 +11,7 @@ Presiding Bishopric: https://www.churchofjesuschrist.org/learn/presiding-bishopr
 
 """
 
-from datetime import date
+from datetime import UTC, date, datetime
 from enum import Enum
 from typing import Any
 
@@ -77,7 +77,8 @@ class Leader(pydantic.BaseModel):
     conference_talks: list[ConferenceTalk] | None = None
     assignments: list[str] | None = None  # Geographic or functional assignments
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
+        """Initialize default values for optional fields."""
         if self.callings is None:
             self.callings = []
         if self.conference_talks is None:
@@ -96,7 +97,7 @@ class Leader(pydantic.BaseModel):
         if self.birth_date is None:
             return self.current_age
 
-        end_date = self.death_date or date.today()
+        end_date = self.death_date or datetime.now(UTC).date()
         age = end_date.year - self.birth_date.year
 
         # Adjust for birthday not yet occurred this year
@@ -126,9 +127,8 @@ class Leader(pydantic.BaseModel):
         if not apostle_calling or apostle_calling.start_date is None:
             return None
 
-        end_date = apostle_calling.end_date or date.today()
-        years = (end_date - apostle_calling.start_date).days / 365.25
-        return years
+        end_date = apostle_calling.end_date or datetime.now(UTC).date()
+        return (end_date - apostle_calling.start_date).days / 365.25
 
     def get_calling_history(self, calling_type: CallingType) -> list[Calling]:
         """Get all callings of a specific type."""
@@ -138,7 +138,8 @@ class Leader(pydantic.BaseModel):
 class LeaderDataScraper:
     """Scrapes and processes leader biographical data from church sources."""
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """Initialize the scraper with HTTP client and base URL."""
         self.client = httpx.Client(timeout=30.0)
         self.base_url = "https://www.churchofjesuschrist.org"
 
@@ -166,7 +167,7 @@ class LeaderDataScraper:
         leaders: list[Leader] = []
         for url in leader_urls:
             try:
-                from apostle_predictor.data_converters import biography_to_leader
+                from apostle_predictor.data_converters import biography_to_leader  # noqa: PLC0415
 
                 bio_data = self._parse_leader_biography(url)
                 leader = biography_to_leader(bio_data)
@@ -223,7 +224,8 @@ class LeaderDataScraper:
             tag = soup.find(id="__NEXT_DATA__")
 
             if tag is None or not tag.string:
-                raise ValueError(f"__NEXT_DATA__ tag missing from {url}")
+                msg = f"__NEXT_DATA__ tag missing from {url}"
+                raise ValueError(msg)
 
             return BiographyPageData.model_validate_json(tag.string)
 
@@ -233,7 +235,8 @@ class LeaderDataScraper:
 class QuorumTracker:
     """Tracks the composition and changes in church leadership quorums."""
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """Initialize the tracker with empty leadership lists."""
         self.current_apostles: list[Leader] = []
         self.historical_changes: list[dict[str, Any]] = []
 

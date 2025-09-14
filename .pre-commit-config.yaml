@@ -20,14 +20,13 @@ repos:
 
   - repo: local
     hooks:
-      # Temporarily disabled while fixing type errors
-      # - id: pyrefly
-      #   name: pyrefly type checking
-      #   entry: uv run pyrefly check
-      #   language: system
-      #   types: [python]
-      #   pass_filenames: false
-      #   always_run: true
+      - id: pyrefly
+        name: pyrefly type checking
+        entry: uv run pyrefly check
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: true
 
       - id: pytest
         name: pytest

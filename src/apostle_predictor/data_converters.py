@@ -1,6 +1,7 @@
 """Functions to convert between Pydantic models and Leader objects."""
 
-from datetime import date, datetime
+import contextlib
+from datetime import UTC, datetime
 
 from apostle_predictor.models.biography_models import BiographyPageData
 from apostle_predictor.models.leader_models import (
@@ -26,7 +27,7 @@ def biography_to_leader(bio_data: BiographyPageData) -> Leader | None:
         birth_date = person.birthDate.fullDate
 
         # Calculate current age
-        today = date.today()
+        today = datetime.now(UTC).date()
         current_age = (
             today.year
             - birth_date.year
@@ -44,10 +45,10 @@ def biography_to_leader(bio_data: BiographyPageData) -> Leader | None:
         # Parse call date
         call_date = None
         if calling_data.callDate:
-            try:
-                call_date = datetime.strptime(calling_data.callDate, "%Y-%m-%d").date()
-            except ValueError:
-                pass
+            with contextlib.suppress(ValueError):
+                call_date = (
+                    datetime.strptime(calling_data.callDate, "%Y-%m-%d").replace(tzinfo=UTC).date()
+                )
 
         # Determine calling type from organization and title
         calling_type = CallingType.GENERAL_AUTHORITY  # Default
@@ -78,11 +79,9 @@ def biography_to_leader(bio_data: BiographyPageData) -> Leader | None:
         leader_callings.append(calling)
 
     # Create Leader object
-    leader = Leader(
+    return Leader(
         name=name,
         birth_date=birth_date,
         current_age=current_age,
         callings=leader_callings,
     )
-
-    return leader

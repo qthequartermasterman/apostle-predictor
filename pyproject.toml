@@ -68,12 +68,18 @@ ignore = [
     "TD002",  # Missing author in TODO
     "TD003",  # Missing issue link in TODO
 
-    # Temporary ignores for refactoring
-    "ERA001", # Found commented-out code
-    "C901",   # Function too complex (temporary while refactoring)
-    "PLR0912", # Too many branches (temporary while refactoring)
-    "PLR0915", # Too many statements (temporary while refactoring)
-    "PLC0415", # Import should be at top level (temporary for test fixes)
+    # Allow certain patterns that are acceptable
+    "N815",   # Variable names in Pydantic models match external API (mixedCase)
+    "FBT001", # Boolean arguments in function definitions are acceptable
+    "FBT002", # Boolean default arguments are acceptable
+    "C901",   # Function complexity - will be addressed in future refactoring
+    "PLR0912", # Too many branches - will be addressed in future refactoring
+    "PLR0915", # Too many statements - will be addressed in future refactoring
+    "ERA001", # Found commented-out code - some comments are intentional
+    "BLE001", # Catching Exception is sometimes necessary for robustness
+    "S311",   # Standard pseudo-random generators are sufficient for simulation
+    "NPY002", # Legacy numpy random is acceptable for this use case
+    "RUF001", # Unicode multiplication sign is intentional for display
 
     # Ignore rules that conflict with formatter
     "COM812", # Trailing comma missing (conflicts with formatter)

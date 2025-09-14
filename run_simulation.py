@@ -442,7 +442,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n\n⚠️  Simulation interrupted by user")
         sys.exit(1)
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         print(f"\n❌ Error: {e}")
         import traceback
 
