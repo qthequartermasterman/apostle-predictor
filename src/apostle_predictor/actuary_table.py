@@ -12,7 +12,6 @@ Number of lives b
 
 import pandas as pd
 
-
 COLUMNS = [
     "age",
     "Male Death Probability",

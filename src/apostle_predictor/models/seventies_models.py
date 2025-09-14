@@ -1,6 +1,7 @@
 """Pydantic models for parsing General Authority Seventies API JSON data."""
 
-from typing import List, Any
+from typing import Any
+
 from pydantic import BaseModel
 
 
@@ -11,12 +12,12 @@ class SeventyMember(BaseModel):
     fullName: str
     preferredName: str
     link: str
-    callings: List[Any] = []
+    callings: list[Any] = []
     model_config = {"extra": "ignore"}
 
 
 class SeventiesApiResponse(BaseModel):
     """Model for the Seventies API response."""
 
-    data: List[SeventyMember]
+    data: list[SeventyMember]
     model_config = {"extra": "ignore"}

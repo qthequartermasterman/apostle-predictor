@@ -1,15 +1,16 @@
 """Tests for web scraping functionality."""
 
-import pytest
-from unittest.mock import Mock, patch
 from datetime import date
+from unittest.mock import Mock, patch
 
-from apostle_predictor.models.leader_models import (
-    LeaderDataScraper,
-    CallingType,
-    CallingStatus,
-)
+import pytest
+
 from apostle_predictor.data_converters import biography_to_leader
+from apostle_predictor.models.leader_models import (
+    CallingStatus,
+    CallingType,
+    LeaderDataScraper,
+)
 
 
 class TestLeaderDataScraper:
@@ -68,7 +69,7 @@ class TestLeaderDataScraper:
                     "preferredName": "Test Two",
                     "callings": [],
                 },
-            ]
+            ],
         }
 
         mock_response = Mock()

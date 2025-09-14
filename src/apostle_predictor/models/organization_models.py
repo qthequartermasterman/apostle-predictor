@@ -1,6 +1,6 @@
 """Pydantic models for parsing Organization collection page JSON data."""
 
-from typing import List, Optional
+
 from pydantic import BaseModel
 
 
@@ -17,16 +17,16 @@ class OrganizationMember(BaseModel):
 
     canonicalUrl: str
     title: str
-    description: Optional[str] = None
-    link: Optional[Link] = None
+    description: str | None = None
+    link: Link | None = None
     model_config = {"extra": "ignore"}
 
 
 class CollectionProps(BaseModel):
     """Model for collection component props."""
 
-    items: List[OrganizationMember] = []
-    description: Optional[str] = None
+    items: list[OrganizationMember] = []
+    description: str | None = None
     model_config = {"extra": "ignore"}
 
 
@@ -41,8 +41,8 @@ class BodyComponent(BaseModel):
 class OrganizationPageProps(BaseModel):
     """Model for Organization page props."""
 
-    body: List[BodyComponent] = []
-    canonicalUrl: Optional[str] = None
+    body: list[BodyComponent] = []
+    canonicalUrl: str | None = None
     model_config = {"extra": "ignore"}
 
 

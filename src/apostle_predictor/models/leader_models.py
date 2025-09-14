@@ -1,6 +1,5 @@
 """Models and data structures for church leaders and their biographical information.
 
-
 Leader bios can be found via links on
 https://www.churchofjesuschrist.org/learn/global-leadership-of-the-church?lang=eng
 
@@ -12,14 +11,16 @@ Presiding Bishopric: https://www.churchofjesuschrist.org/learn/presiding-bishopr
 
 """
 
-import pydantic
 from datetime import date
 from enum import Enum
-from typing import List, Optional, Dict, Any
+from typing import Any
+
+import auto_pydantic_cache
 import httpx
 import pandas as pd
+import pydantic
 from bs4 import BeautifulSoup
-import auto_pydantic_cache
+
 from apostle_predictor.models.biography_models import BiographyPageData
 from apostle_predictor.models.organization_models import OrganizationPageData
 from apostle_predictor.models.seventies_models import SeventiesApiResponse
@@ -51,10 +52,10 @@ class Calling(pydantic.BaseModel):
     """Represents a church calling/position."""
 
     calling_type: CallingType
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
+    start_date: date | None = None
+    end_date: date | None = None
     status: CallingStatus = CallingStatus.CURRENT
-    seniority: Optional[int] = None  # Seniority ranking within quorum/organization
+    seniority: int | None = None  # Seniority ranking within quorum/organization
     notes: str = ""
 
 
@@ -64,19 +65,19 @@ class ConferenceTalk(pydantic.BaseModel):
     title: str
     date: date
     session: str  # e.g., "Saturday Morning", "Sunday Afternoon"
-    url: Optional[str] = None
+    url: str | None = None
 
 
 class Leader(pydantic.BaseModel):
     """Represents a church leader with biographical and calling information."""
 
     name: str
-    birth_date: Optional[date] = None
-    death_date: Optional[date] = None
-    current_age: Optional[int] = None
-    callings: Optional[List[Calling]] = None
-    conference_talks: Optional[List[ConferenceTalk]] = None
-    assignments: Optional[List[str]] = None  # Geographic or functional assignments
+    birth_date: date | None = None
+    death_date: date | None = None
+    current_age: int | None = None
+    callings: list[Calling] | None = None
+    conference_talks: list[ConferenceTalk] | None = None
+    assignments: list[str] | None = None  # Geographic or functional assignments
 
     def __post_init__(self):
         if self.callings is None:
@@ -92,7 +93,7 @@ class Leader(pydantic.BaseModel):
         return self.death_date is None
 
     @property
-    def age(self) -> Optional[int]:
+    def age(self) -> int | None:
         """Calculate current age or age at death."""
         if self.birth_date is None:
             return self.current_age
@@ -119,7 +120,7 @@ class Leader(pydantic.BaseModel):
         )
 
     @property
-    def years_as_apostle(self) -> Optional[float]:
+    def years_as_apostle(self) -> float | None:
         """Calculate years served as apostle."""
         apostle_calling = next(
             (
@@ -137,7 +138,7 @@ class Leader(pydantic.BaseModel):
         years = (end_date - apostle_calling.start_date).days / 365.25
         return years
 
-    def get_calling_history(self, calling_type: CallingType) -> List[Calling]:
+    def get_calling_history(self, calling_type: CallingType) -> list[Calling]:
         """Get all callings of a specific type."""
         return [
             calling for calling in self.callings if calling.calling_type == calling_type
@@ -151,7 +152,7 @@ class LeaderDataScraper:
         self.client = httpx.Client(timeout=30.0)
         self.base_url = "https://www.churchofjesuschrist.org"
 
-    def scrape_general_authorities(self) -> List[Leader]:
+    def scrape_general_authorities(self) -> list[Leader]:
         """Scrape current General Authority data from church website."""
         # Leadership organization URLs
         organization_urls = [
@@ -186,7 +187,7 @@ class LeaderDataScraper:
 
         return leaders
 
-    def _get_organization_members_links(self, collection_url: str) -> List[str]:
+    def _get_organization_members_links(self, collection_url: str) -> list[str]:
         """Get canonical URLs for members of a leadership organization."""
         response = self.client.get(collection_url)
         response.raise_for_status()
@@ -208,10 +209,9 @@ class LeaderDataScraper:
 
         if collection_component:
             return [member.canonicalUrl for member in collection_component.props.items]
-        else:
-            return []
+        return []
 
-    def _get_seventies_links(self) -> List[str]:
+    def _get_seventies_links(self) -> list[str]:
         """Get canonical URLs for General Authority Seventies."""
         api_url = (
             "https://www.churchofjesuschrist.org/api/dozr/services/content/1/runNamedQuery"
@@ -244,8 +244,8 @@ class QuorumTracker:
     """Tracks the composition and changes in church leadership quorums."""
 
     def __init__(self):
-        self.current_apostles: List[Leader] = []
-        self.historical_changes: List[Dict[str, Any]] = []
+        self.current_apostles: list[Leader] = []
+        self.historical_changes: list[dict[str, Any]] = []
 
     def load_current_apostles(self) -> None:
         """Load current apostles data."""
@@ -253,7 +253,7 @@ class QuorumTracker:
         all_leaders = scraper.scrape_general_authorities()
         self.current_apostles = [leader for leader in all_leaders if leader.is_apostle]
 
-    def get_apostles_by_seniority(self) -> List[Leader]:
+    def get_apostles_by_seniority(self) -> list[Leader]:
         """Return apostles ordered by seniority (calling date)."""
         return sorted(
             self.current_apostles,
@@ -268,7 +268,7 @@ class QuorumTracker:
             ),
         )
 
-    def get_age_distribution(self) -> Dict[str, float]:
+    def get_age_distribution(self) -> dict[str, float]:
         """Get age statistics for current apostles."""
         ages = [
             leader.age for leader in self.current_apostles if leader.age is not None
@@ -312,7 +312,7 @@ class QuorumTracker:
                     if leader.conference_talks
                     else 0,
                     "assignments": len(leader.assignments) if leader.assignments else 0,
-                }
+                },
             )
 
         return pd.DataFrame(data)

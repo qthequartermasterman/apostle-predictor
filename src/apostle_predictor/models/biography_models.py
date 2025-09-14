@@ -1,8 +1,8 @@
 """Pydantic models for parsing church leader biography JSON data."""
 
-from typing import List, Optional
-from pydantic import BaseModel, Field
 import datetime
+
+from pydantic import BaseModel, Field
 
 
 class HistoricalDate(BaseModel):
@@ -19,7 +19,7 @@ class Organization(BaseModel):
     """Model for organization information."""
 
     name: str
-    masterDataId: Optional[str] = Field(None, alias="masterDataId")
+    masterDataId: str | None = Field(None, alias="masterDataId")
     model_config = {"extra": "ignore"}
 
 
@@ -39,25 +39,25 @@ class Calling(BaseModel):
     callingDateSelector: CallingDateSelector
     callingTitle: str
     organization: Organization | None = Field(default=None)
-    seniorityNumber: Optional[int] = None
+    seniorityNumber: int | None = None
     model_config = {"extra": "ignore"}
 
 
 class ContentPerson(BaseModel):
     """Model for content person data."""
 
-    birthDate: Optional[HistoricalDate] = None
-    callings: List[Calling] = []
-    name: Optional[str] = None
-    displayName: Optional[str] = None
-    preferredName: Optional[str] = None
+    birthDate: HistoricalDate | None = None
+    callings: list[Calling] = []
+    name: str | None = None
+    displayName: str | None = None
+    preferredName: str | None = None
     model_config = {"extra": "ignore"}
 
 
 class PageProps(BaseModel):
     """Model for page props data."""
 
-    contentPerson: List[ContentPerson] = []
+    contentPerson: list[ContentPerson] = []
     model_config = {"extra": "ignore"}
 
 
