@@ -20,13 +20,14 @@ repos:
 
   - repo: local
     hooks:
-      - id: pyrefly
-        name: pyrefly type checking
-        entry: uv run pyrefly check
-        language: system
-        types: [python]
-        pass_filenames: false
-        always_run: true
+      # TODO: Re-enable when pyrefly has better numpy/pandas type support
+      # - id: pyrefly
+      #   name: pyrefly type checking
+      #   entry: uv run pyrefly check
+      #   language: system
+      #   types: [python]
+      #   pass_filenames: false
+      #   always_run: true
 
       - id: pytest
         name: pytest
