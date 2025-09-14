@@ -1,18 +1,17 @@
 """Functions to convert between Pydantic models and Leader objects."""
 
 from datetime import date, datetime
-from typing import Optional
 
 from apostle_predictor.models.biography_models import BiographyPageData
 from apostle_predictor.models.leader_models import (
-    Leader,
     Calling,
-    CallingType,
     CallingStatus,
+    CallingType,
+    Leader,
 )
 
 
-def biography_to_leader(bio_data: BiographyPageData) -> Optional[Leader]:
+def biography_to_leader(bio_data: BiographyPageData) -> Leader | None:
     """Convert BiographyPageData to Leader object."""
     if not bio_data.props.pageProps.contentPerson:
         return None

@@ -1,22 +1,23 @@
 """Tests for vectorized simulation functionality."""
 
 from datetime import date
+
 import numpy as np
 
+from apostle_predictor.models.leader_models import (
+    Calling,
+    CallingStatus,
+    CallingType,
+    Leader,
+)
 from apostle_predictor.simulation import (
     VectorizedApostolicSimulation,
     VectorizedSimulationAnalyzer,
+    calculate_apostle_calling_age_probability,
+    get_leader_title,
     is_apostolic_leader,
     is_candidate_leader,
-    get_leader_title,
-    calculate_apostle_calling_age_probability,
     select_new_apostle,
-)
-from apostle_predictor.models.leader_models import (
-    Leader,
-    Calling,
-    CallingType,
-    CallingStatus,
 )
 
 
@@ -44,7 +45,7 @@ class TestVectorizedApostolicSimulation:
                         calling_type=CallingType.APOSTLE,
                         status=CallingStatus.CURRENT,
                         seniority=5,
-                    )
+                    ),
                 ],
             ),
             Leader(
@@ -55,7 +56,7 @@ class TestVectorizedApostolicSimulation:
                     Calling(
                         calling_type=CallingType.GENERAL_AUTHORITY,
                         status=CallingStatus.CURRENT,
-                    )
+                    ),
                 ],
             ),
         ]
@@ -101,7 +102,7 @@ class TestVectorizedApostolicSimulation:
                         calling_type=CallingType.PROPHET,
                         status=CallingStatus.CURRENT,
                         seniority=1,
-                    )
+                    ),
                 ],
             ),
             Leader(
@@ -113,14 +114,14 @@ class TestVectorizedApostolicSimulation:
                         calling_type=CallingType.APOSTLE,
                         status=CallingStatus.CURRENT,
                         seniority=2,
-                    )
+                    ),
                 ],
             ),
         ]
 
         # Run short simulation
         result = self.simulation.run_vectorized_monte_carlo(
-            leaders=leaders, years=1, iterations=5, random_seed=42
+            leaders=leaders, years=1, iterations=5, random_seed=42,
         )
 
         assert result is not None
@@ -142,7 +143,7 @@ class TestVectorizedSimulationAnalyzer:
         mock_result.prophet_changes = np.array([1, 2, 1])
         mock_result.apostolic_changes = np.array([3, 4, 2])
         mock_result.death_times = np.array(
-            [[-1, 50], [-1, -1], [100, -1]]
+            [[-1, 50], [-1, -1], [100, -1]],
         )  # -1 means survived
 
         leaders = [
@@ -201,7 +202,7 @@ class TestVectorizedSimulationAnalyzer:
         mock_result.prophet_changes = np.array([1, 2, 3])
         mock_result.apostolic_changes = np.array([2, 4, 6])
         mock_result.death_times = np.array(
-            [[-1, -1], [-1, 50], [100, -1]]
+            [[-1, -1], [-1, 50], [100, -1]],
         )  # -1 means survived
 
         leaders = [Leader(name="Leader 1"), Leader(name="Leader 2")]
@@ -237,7 +238,7 @@ class TestLeaderClassificationFunctions:
                 Calling(
                     calling_type=CallingType.APOSTLE,
                     status=CallingStatus.CURRENT,
-                )
+                ),
             ],
         )
 
@@ -247,7 +248,7 @@ class TestLeaderClassificationFunctions:
                 Calling(
                     calling_type=CallingType.PROPHET,
                     status=CallingStatus.CURRENT,
-                )
+                ),
             ],
         )
 
@@ -257,7 +258,7 @@ class TestLeaderClassificationFunctions:
                 Calling(
                     calling_type=CallingType.GENERAL_AUTHORITY,
                     status=CallingStatus.CURRENT,
-                )
+                ),
             ],
         )
 
@@ -273,7 +274,7 @@ class TestLeaderClassificationFunctions:
                 Calling(
                     calling_type=CallingType.APOSTLE,
                     status=CallingStatus.CURRENT,
-                )
+                ),
             ],
         )
 
@@ -283,7 +284,7 @@ class TestLeaderClassificationFunctions:
                 Calling(
                     calling_type=CallingType.GENERAL_AUTHORITY,
                     status=CallingStatus.CURRENT,
-                )
+                ),
             ],
         )
 
@@ -298,7 +299,7 @@ class TestLeaderClassificationFunctions:
                 Calling(
                     calling_type=CallingType.APOSTLE,
                     status=CallingStatus.CURRENT,
-                )
+                ),
             ],
         )
 
@@ -308,7 +309,7 @@ class TestLeaderClassificationFunctions:
                 Calling(
                     calling_type=CallingType.GENERAL_AUTHORITY,
                     status=CallingStatus.CURRENT,
-                )
+                ),
             ],
         )
 
@@ -318,7 +319,7 @@ class TestLeaderClassificationFunctions:
                 Calling(
                     calling_type=CallingType.PRESIDING_BISHOP,
                     status=CallingStatus.CURRENT,
-                )
+                ),
             ],
         )
 
@@ -354,7 +355,7 @@ class TestApostleSelectionFunctions:
                     Calling(
                         calling_type=CallingType.GENERAL_AUTHORITY,
                         status=CallingStatus.CURRENT,
-                    )
+                    ),
                 ],
             ),
             Leader(
@@ -364,7 +365,7 @@ class TestApostleSelectionFunctions:
                     Calling(
                         calling_type=CallingType.GENERAL_AUTHORITY,
                         status=CallingStatus.CURRENT,
-                    )
+                    ),
                 ],
             ),
         ]

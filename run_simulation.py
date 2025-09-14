@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """CLI interface for running apostolic succession simulations."""
 
-import sys
 import argparse
+import sys
 
 # Add src to path so we can import our modules
 sys.path.append("src")
 
 from apostle_predictor.models.leader_models import (
-    LeaderDataScraper,
-    CallingType,
     CallingStatus,
+    CallingType,
+    LeaderDataScraper,
 )
 from apostle_predictor.simulation import (
     VectorizedApostolicSimulation,
@@ -45,7 +45,7 @@ Examples:
     )
 
     parser.add_argument(
-        "--detailed", action="store_true", help="Show detailed results for each apostle"
+        "--detailed", action="store_true", help="Show detailed results for each apostle",
     )
 
     parser.add_argument("--seed", type=int, help="Random seed for reproducible results")
@@ -123,7 +123,7 @@ Examples:
 
     # Step 2: Run simulation
     print(
-        f"\n🚀 Running {args.iterations} Monte Carlo simulations for {args.years} years..."
+        f"\n🚀 Running {args.iterations} Monte Carlo simulations for {args.years} years...",
     )
 
     # Show unwell hazard ratio if not default
@@ -163,7 +163,7 @@ Examples:
     ]
     if unwell_leaders:
         print(
-            f"🏥 Leaders marked as unwell (hazard ratio {args.unwell_hazard_ratio}x): {', '.join(unwell_leaders)}"
+            f"🏥 Leaders marked as unwell (hazard ratio {args.unwell_hazard_ratio}x): {', '.join(unwell_leaders)}",
         )
 
     # Display replacement events if any occurred
@@ -174,7 +174,7 @@ Examples:
             print(
                 f"Day {event['day']:4} ({event['date'].strftime('%Y-%m-%d')}): "
                 f"{event['replacement_title']} {event['replacement_name']} "
-                f"(age {event['replacement_age']}) called as apostle to replace {event['replaced_leader']}"
+                f"(age {event['replacement_age']}) called as apostle to replace {event['replaced_leader']}",
             )
         print()
 
@@ -248,7 +248,7 @@ Examples:
         survival_prob = survival_probs.get(leader.name, 0.0) * 100
 
         print(
-            f"{title:15} | {leader.name:25} | Prophet: {succession_prob:5.1f}% | Survival: {survival_prob:5.1f}%"
+            f"{title:15} | {leader.name:25} | Prophet: {succession_prob:5.1f}% | Survival: {survival_prob:5.1f}%",
         )
 
     # Show presidency statistics for vectorized simulations
@@ -256,7 +256,7 @@ Examples:
         print("\n👑 PRESIDENCY STATISTICS (Days served as Prophet)")
         print("-" * 80)
         print(
-            f"{'Title':15} | {'Name':25} | {'Ever Pres':9} | {'Mean Years':10} | {'Std Years':9}"
+            f"{'Title':15} | {'Name':25} | {'Ever Pres':9} | {'Mean Years':10} | {'Std Years':9}",
         )
         print("-" * 80)
         for leader, sort_key, title in leaders_by_hierarchy:
@@ -266,7 +266,7 @@ Examples:
             std_years = stats.get("std_presidency_years", 0.0)
 
             print(
-                f"{title:15} | {leader.name:25} | {ever_president_pct:8.1f}% | {mean_years:9.2f} | {std_years:8.2f}"
+                f"{title:15} | {leader.name:25} | {ever_president_pct:8.1f}% | {mean_years:9.2f} | {std_years:8.2f}",
             )
 
     if args.detailed:
@@ -291,25 +291,25 @@ Examples:
             print(f"    Birth: {leader.birth_date} (Age: {current_age})")
             print(f"    Called: {call_date}")
             print(
-                f"    Prophet Probability: {succession_probs.get(leader.name, 0.0) * 100:.1f}%"
+                f"    Prophet Probability: {succession_probs.get(leader.name, 0.0) * 100:.1f}%",
             )
             print(
-                f"    Survival Probability: {survival_probs.get(leader.name, 0.0) * 100:.1f}%"
+                f"    Survival Probability: {survival_probs.get(leader.name, 0.0) * 100:.1f}%",
             )
 
     print("\n📋 SUMMARY STATISTICS")
     print("-" * 60)
     print(
-        f"Average Prophet Changes: {summary_stats['avg_prophet_changes']:.1f} ± {summary_stats['std_prophet_changes']:.1f}"
+        f"Average Prophet Changes: {summary_stats['avg_prophet_changes']:.1f} ± {summary_stats['std_prophet_changes']:.1f}",
     )
     print(
-        f"Range: {summary_stats['min_prophet_changes']:.0f} - {summary_stats['max_prophet_changes']:.0f}"
+        f"Range: {summary_stats['min_prophet_changes']:.0f} - {summary_stats['max_prophet_changes']:.0f}",
     )
     print(
-        f"\nAverage Apostolic Changes: {summary_stats['avg_apostolic_changes']:.1f} ± {summary_stats['std_apostolic_changes']:.1f}"
+        f"\nAverage Apostolic Changes: {summary_stats['avg_apostolic_changes']:.1f} ± {summary_stats['std_apostolic_changes']:.1f}",
     )
     print(
-        f"Range: {summary_stats['min_apostolic_changes']:.0f} - {summary_stats['max_apostolic_changes']:.0f}"
+        f"Range: {summary_stats['min_apostolic_changes']:.0f} - {summary_stats['max_apostolic_changes']:.0f}",
     )
 
     # Insights
@@ -319,7 +319,7 @@ Examples:
     # Most likely next prophet
     most_likely_prophet = max(succession_probs.items(), key=lambda x: x[1])
     print(
-        f"• Most likely next Prophet: {most_likely_prophet[0]} ({most_likely_prophet[1] * 100:.1f}%)"
+        f"• Most likely next Prophet: {most_likely_prophet[0]} ({most_likely_prophet[1] * 100:.1f}%)",
     )
 
     # Oldest leader
@@ -339,7 +339,7 @@ Examples:
     )
     if current_prophet:
         print(
-            f"• Current Prophet: {current_prophet.name} (Age {current_prophet.current_age})"
+            f"• Current Prophet: {current_prophet.name} (Age {current_prophet.current_age})",
         )
 
     # Show monthly succession summary if succession candidates were shown
@@ -369,7 +369,7 @@ Examples:
                             if len(candidate["name"]) > 18
                             else candidate["name"]
                         )
-                        row += f"{name:<18} | {candidate['probability']:<4} | {str(candidate['age']):<3}"
+                        row += f"{name:<18} | {candidate['probability']:<4} | {candidate['age']!s:<3}"
                     else:
                         row += f"{'--':<18} | {'--':<4} | {'--':<3}"
                     if i < 3:

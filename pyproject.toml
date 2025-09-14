@@ -26,3 +26,70 @@ dev = [
     "ruff==0.12.12",
     "ty==0.0.1a20",
 ]
+
+[tool.ruff]
+# Set line length to 88 (black default)
+line-length = 88
+
+# Target Python 3.12
+target-version = "py312"
+
+[tool.ruff.lint]
+# Enable ALL available rules
+select = ["ALL"]
+# Exclude some overly strict or inappropriate rules
+ignore = [
+    # Allow certain naming patterns
+    "N999",  # Invalid module name (conflicts with package structure)
+
+    # Allow certain docstring patterns
+    "D100",  # Missing docstring in public module (not always needed)
+    "D104",  # Missing docstring in public package (not always needed)
+
+    # Allow certain import patterns
+    "TCH",   # flake8-type-checking (can be overly aggressive)
+
+    # Allow print statements for CLI output
+    "T201",  # print found
+
+    # Allow certain complexity
+    "PLR0913",  # Too many arguments to function call (sometimes needed)
+    "PLR0912",  # Too many branches (sometimes needed for complex logic)
+    "PLR0915",  # Too many statements (sometimes needed for complex functions)
+
+    # Allow certain patterns in tests
+    "S101",   # Use of assert detected (needed in tests)
+    "PLR2004", # Magic value used in comparison (common in tests)
+
+    # Allow certain patterns for data science/ML code
+    "PD",     # pandas-vet rules (can be overly restrictive for our use case)
+
+    # Allow certain todo patterns
+    "FIX002", # Line contains TODO (we want TODOs)
+    "TD002",  # Missing author in TODO
+    "TD003",  # Missing issue link in TODO
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Allow certain patterns in test files
+"tests/**/*.py" = [
+    "ANN",     # Missing type annotations (not critical for tests)
+    "D",       # Missing docstrings (not critical for tests)
+    "S",       # Security issues (not critical for tests)
+    "SLF001",  # Private member accessed (common in tests)
+]
+
+# Allow certain patterns in notebooks
+"*.ipynb" = [
+    "D",       # Missing docstrings (not needed in notebooks)
+    "T201",    # print statements (expected in notebooks)
+    "B018",    # Found useless expression (common in exploratory notebooks)
+]
+
+[tool.ruff.lint.pydocstyle]
+# Use Google docstring style
+convention = "google"
+
+[tool.ruff.lint.isort]
+# Configure import sorting
+known-first-party = ["apostle_predictor"]
