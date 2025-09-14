@@ -173,6 +173,16 @@ Examples:
         unwell_leaders = [leader_names[i] for i in range(len(leader_names)) if unwell_mask[i]]
         if unwell_leaders:
             print(f"🏥 Leaders marked as unwell (hazard ratio {args.unwell_hazard_ratio}x): {', '.join(unwell_leaders)}")
+
+        # Display replacement events if any occurred
+        if hasattr(simulation, 'replacement_events') and simulation.replacement_events:
+            print("\n🔄 APOSTLE REPLACEMENT EVENTS")
+            print("-" * 60)
+            for event in simulation.replacement_events:
+                print(f"Day {event['day']:4} ({event['date'].strftime('%Y-%m-%d')}): "
+                      f"{event['replacement_title']} {event['replacement_name']} "
+                      f"(age {event['replacement_age']}) called as apostle to replace {event['replaced_leader']}")
+            print()
         
         
     else:

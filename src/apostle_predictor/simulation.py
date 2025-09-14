@@ -916,10 +916,10 @@ class VectorizedApostolicSimulation:
         return age
     
     def run_vectorized_monte_carlo(
-        self, 
-        leaders: List[Leader], 
-        years: int, 
-        iterations: int, 
+        self,
+        leaders: List[Leader],
+        years: int,
+        iterations: int,
         random_seed: Optional[int] = None,
         show_monthly_composition: bool = False,
         show_succession_candidates: bool = False,
@@ -933,9 +933,10 @@ class VectorizedApostolicSimulation:
         # Store original leaders for age calculations
         self.original_leaders = leaders
         
-        # Initialize monthly succession tracking
+        # Initialize monthly succession tracking and replacement event logging
         self.monthly_succession_data = [] if show_succession_candidates else None
         self.monthly_president_data = {} if show_succession_candidates else None  # {day: [president_indices_by_iteration]}
+        self.replacement_events = []  # Track apostle replacement events for reporting
         
         # Convert leaders to arrays
         birth_years, current_ages, seniority, calling_types, unwell_mask, leader_names = self._leaders_to_arrays(leaders)
@@ -1150,6 +1151,27 @@ class VectorizedApostolicSimulation:
                                     else:
                                         next_seniority = 1
                                     iteration_seniority[replacement_idx] = next_seniority
+
+                                    # Store replacement event for reporting (only show for first iteration)
+                                    if iteration == 0 and hasattr(self, 'replacement_events'):
+                                        replacement_age = (simulation_date - replacement_leader.birth_date).days // 365 if replacement_leader.birth_date else 'Unknown'
+                                        # Get dead leader name from the original leaders list
+                                        if original_leaders and 0 <= dead_leader_idx < len(original_leaders):
+                                            dead_leader_name = original_leaders[dead_leader_idx].name
+                                        elif leader_names and 0 <= dead_leader_idx < len(leader_names):
+                                            dead_leader_name = leader_names[dead_leader_idx]
+                                        else:
+                                            dead_leader_name = f'Leader_Index_{dead_leader_idx}'
+                                        replacement_title = get_leader_title(replacement_leader)
+
+                                        self.replacement_events.append({
+                                            'day': death_day,
+                                            'date': simulation_date,
+                                            'replacement_name': replacement_leader.name,
+                                            'replacement_title': replacement_title,
+                                            'replacement_age': replacement_age,
+                                            'replaced_leader': dead_leader_name
+                                        })
             
             # Handle any remaining monthly reports after all deaths processed
             while next_monthly_report <= n_days:
