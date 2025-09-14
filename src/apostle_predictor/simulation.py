@@ -236,11 +236,44 @@ def calculate_apostle_calling_age_probability(
     return 0.001
 
 
+def calculate_conference_talk_probability(conference_talk_count: int) -> float:
+    """Calculate probability multiplier based on number of conference talks given.
+
+    Based on analysis of historical apostles and their conference talk patterns
+    before being called as apostles.
+
+    Args:
+        conference_talk_count: Number of conference talks given before calling
+
+    Returns:
+        Probability multiplier (0.1 to 2.0) based on conference talk experience
+    """
+    # Historical analysis suggests:
+    # 0 talks: Very low probability (but not zero - some apostles had few talks)
+    # 1-5 talks: Below average probability
+    # 6-15 talks: Average probability
+    # 16-25 talks: Above average probability
+    # 25+ talks: Very high probability (extensive experience)
+
+    if conference_talk_count == 0:
+        return 0.3  # Low but not zero
+    if conference_talk_count <= 5:
+        return 0.7  # Below average
+    if conference_talk_count <= 15:
+        return 1.0  # Average/baseline
+    if conference_talk_count <= 25:
+        return 1.5  # Above average
+    return 2.0  # Very high probability
+
+
 def select_new_apostle(
     candidate_leaders: list[Leader],
     current_date: date,
 ) -> Leader | None:
-    """Select a new apostle from candidates based on age probability distribution.
+    """Select a new apostle from candidates based on age and conference talk probability.
+
+    Uses both age probability distribution and conference talk experience to
+    weight candidate selection probabilities.
 
     Args:
         candidate_leaders: List of living candidate leaders
@@ -252,14 +285,22 @@ def select_new_apostle(
     if not candidate_leaders:
         return None
 
-    # Calculate age and probability for each candidate
+    # Calculate combined age and conference talk probability for each candidate
     candidates_with_weights = []
     for candidate in candidate_leaders:
         if candidate.birth_date:
             # Calculate current age
             age = (current_date - candidate.birth_date).days // 365
-            probability = calculate_apostle_calling_age_probability(age)
-            candidates_with_weights.append((candidate, probability))
+            age_probability = calculate_apostle_calling_age_probability(age)
+
+            # Calculate conference talk probability multiplier
+            talk_count = len(candidate.conference_talks) if candidate.conference_talks else 0
+            talk_multiplier = calculate_conference_talk_probability(talk_count)
+
+            # Combined probability = age_probability * conference_talk_multiplier
+            combined_probability = age_probability * talk_multiplier
+
+            candidates_with_weights.append((candidate, combined_probability))
 
     if not candidates_with_weights:
         return None

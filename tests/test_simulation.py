@@ -8,6 +8,7 @@ from apostle_predictor.models.leader_models import (
     Calling,
     CallingStatus,
     CallingType,
+    ConferenceTalk,
     Leader,
 )
 from apostle_predictor.simulation import (
@@ -15,6 +16,7 @@ from apostle_predictor.simulation import (
     VectorizedSimulationAnalyzer,
     VectorizedSimulationResult,
     calculate_apostle_calling_age_probability,
+    calculate_conference_talk_probability,
     get_leader_title,
     is_apostolic_leader,
     is_candidate_leader,
@@ -386,3 +388,64 @@ class TestApostleSelectionFunctions:
         # Should return one of the candidates
         assert selected is not None
         assert selected in candidates
+
+    def test_calculate_conference_talk_probability(self) -> None:
+        """Test conference talk probability calculation."""
+        # Test various conference talk counts
+        assert calculate_conference_talk_probability(0) == 0.3  # Low but not zero
+        assert calculate_conference_talk_probability(5) == 0.7  # Below average
+        assert calculate_conference_talk_probability(15) == 1.0  # Average/baseline
+        assert calculate_conference_talk_probability(25) == 1.5  # Above average
+        assert calculate_conference_talk_probability(30) == 2.0  # Very high
+
+    def test_select_new_apostle_with_conference_talks(self) -> None:
+        """Test apostle selection considers conference talks."""
+        # Create candidates with different conference talk counts
+        candidates = [
+            Leader(
+                name="High Talk Candidate",
+                birth_date=date(1965, 1, 1),
+                callings=[
+                    Calling(
+                        calling_type=CallingType.GENERAL_AUTHORITY,
+                        status=CallingStatus.CURRENT,
+                    )
+                ],
+                conference_talks=[
+                    ConferenceTalk(
+                        title=f"Talk {i}",
+                        date=date(2020 + i // 2, 4 if i % 2 == 0 else 10, 1),
+                        session="Saturday Morning",
+                    )
+                    for i in range(20)  # 20 conference talks (high)
+                ],
+            ),
+            Leader(
+                name="Low Talk Candidate",
+                birth_date=date(1965, 1, 1),  # Same age to isolate conference talk effect
+                callings=[
+                    Calling(
+                        calling_type=CallingType.GENERAL_AUTHORITY,
+                        status=CallingStatus.CURRENT,
+                    )
+                ],
+                conference_talks=[],  # No conference talks (low probability)
+            ),
+        ]
+
+        # Run selection multiple times to check statistical preference
+        selections = []
+        for _ in range(100):  # Run many times to see statistical trend
+            selected = select_new_apostle(candidates, date(2024, 1, 1))
+            if selected:
+                selections.append(selected.name)
+
+        # The high talk candidate should be selected more often
+        high_talk_selections = selections.count("High Talk Candidate")
+        low_talk_selections = selections.count("Low Talk Candidate")
+
+        # With 20 talks (2.0x multiplier) vs 0 talks (0.3x multiplier),
+        # the ratio should heavily favor the high talk candidate
+        assert high_talk_selections > low_talk_selections
+        # Should be at least 2:1 ratio given the multiplier difference
+        assert high_talk_selections > low_talk_selections * 2
