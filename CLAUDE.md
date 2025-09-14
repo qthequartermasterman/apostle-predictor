@@ -75,6 +75,58 @@ The simulation engine (`simulation.py`) models:
 - **Caching Strategy**: Individual biography pages are cached to minimize repeated requests during development
 - **Use Claude Agents**: For complex multi-step tasks, code reviews, linting, and documentation synchronization, leverage specialized Claude Code agents to maintain code quality and consistency
 
+## Development Process Guidelines
+
+### Planning and Requirements
+
+**ALWAYS make a plan before adding features or fixing bugs.** Follow this structured approach:
+
+1. **Ask Clarifying Questions**: Before making any assumptions, ask as many clarifying questions as needed to fully understand:
+   - What exactly is the desired outcome?
+   - Are there specific constraints or requirements?
+   - How should edge cases be handled?
+   - What is the expected behavior in different scenarios?
+   - Are there performance or compatibility considerations?
+
+2. **State All Assumptions**: Before designing or planning, clearly state any and all assumptions you are making about:
+   - User requirements and expectations
+   - System behavior and constraints
+   - Data formats and structures
+   - Integration points and dependencies
+   - Performance and scale requirements
+
+3. **Create a Detailed Plan**: Use the TodoWrite tool to create a structured plan that includes:
+   - Requirements analysis and assumption documentation
+   - High-level design approach
+   - Implementation steps broken into manageable tasks
+   - Testing and validation steps
+   - Potential risks and mitigation strategies
+
+4. **Validate Before Implementation**: Present the plan and assumptions to the user for confirmation before beginning implementation.
+
+**Example Planning Process:**
+```
+Clarifying Questions:
+- Should the new feature handle X scenario?
+- What should happen when Y condition occurs?
+- Are there specific performance requirements?
+
+Assumptions:
+- Assuming the feature should work with existing data format Z
+- Assuming backward compatibility is required
+- Assuming the user wants the same UI pattern as feature W
+
+Plan:
+1. Analyze existing codebase for similar patterns
+2. Design the new feature architecture
+3. Implement core functionality
+4. Add error handling and edge cases
+5. Test with various scenarios
+6. Document any new APIs or changes
+```
+
+This structured approach ensures robust, well-thought-out solutions that meet user needs without introducing unexpected behavior or technical debt.
+
 ## Git Workflow
 
 **Commit frequently when functionality is working** - This project benefits from incremental commits to track progress and maintain working states.
