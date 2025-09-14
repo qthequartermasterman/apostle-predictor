@@ -94,8 +94,8 @@ Examples:
     complete_leaders = []
     for leader in all_leaders:
         if leader.birth_date and leader.callings:
-            # Check for key leadership callings
-            has_key_calling = False
+            # Check for general authority callings (both apostolic and candidate positions)
+            has_ga_calling = False
             for calling in leader.callings:
                 if (
                     calling.calling_type
@@ -104,13 +104,16 @@ Examples:
                         CallingType.COUNSELOR_FIRST_PRESIDENCY,
                         CallingType.APOSTLE,
                         CallingType.ACTING_PRESIDENT_QUORUM_TWELVE,
+                        CallingType.GENERAL_AUTHORITY,  # Include all General Authorities as candidates
+                        CallingType.PRESIDING_BISHOP,
+                        CallingType.SEVENTY,
                     ]
                     and calling.status == CallingStatus.CURRENT
                 ):
-                    has_key_calling = True
+                    has_ga_calling = True
                     break
 
-            if has_key_calling:
+            if has_ga_calling:
                 complete_leaders.append(leader)
 
     print(f"✅ Found {len(complete_leaders)} total leaders with complete data")
