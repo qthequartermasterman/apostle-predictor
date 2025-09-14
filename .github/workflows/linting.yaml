@@ -32,3 +32,5 @@ jobs:
         with:
           commit_message: "style: pre-commit linting fixes"
           add_options: "--no-verify"
+      - name: Run Ruff
+        run: ruff check --output-format=github .
