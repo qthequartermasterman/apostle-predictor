@@ -43,14 +43,23 @@ class Calling(BaseModel):
     model_config = {"extra": "ignore"}
 
 
+class Related(BaseModel):
+    """Related links."""
+
+    linkTarget: str
+    linkText: str
+    linkUrl: str
+
+
 class ContentPerson(BaseModel):
     """Model for content person data."""
 
     birthDate: HistoricalDate | None = None
-    callings: list[Calling] = []
+    callings: list[Calling] = Field(default_factory=list)
     name: str | None = None
     displayName: str | None = None
     preferredName: str | None = None
+    related: list[Related] = Field(default_factory=list)
     model_config = {"extra": "ignore"}
 
 
@@ -69,7 +78,7 @@ class Props(BaseModel):
 
 
 class BiographyPageData(BaseModel):
-    """Model for the complete biography page JSON structure."""
+    """Model for the  complete biography page JSON structure."""
 
     props: Props
     model_config = {"extra": "ignore"}

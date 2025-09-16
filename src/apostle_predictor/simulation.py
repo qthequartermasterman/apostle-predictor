@@ -6,6 +6,7 @@ patterns based on seniority rules.
 """
 
 import random
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from enum import Enum
@@ -236,15 +237,72 @@ def calculate_apostle_calling_age_probability(
     return 0.001
 
 
+def _setup_historical_conference_talk_numbers(leaders: Sequence[Leader]) -> list[int]:
+    return [leader.pre_apostle_conference_talks for leader in leaders if leader.is_apostle]
+
+
+def calculate_conference_talk_probability(
+    conference_talk_count: int, historical_conference_talk_numbers: list[int]
+) -> float:
+    """Calculate probability based on conference talk count using historical data.
+
+    Uses Gaussian kernel density estimation with historical conference talk counts
+    from current and past apostles to create a smooth probability distribution.
+
+    Args:
+        conference_talk_count: Number of conference talks given before calling
+        historical_conference_talk_numbers: Historical conference talk counts from apostles
+
+    Returns:
+        Probability (0.0 to 1.0) based on historical conference talk patterns
+    """
+    # Handle edge cases - negative counts should be treated as zero
+    conference_talk_count = max(0, conference_talk_count)
+
+    # If no historical data provided, fall back to uniform probability
+    if not historical_conference_talk_numbers:
+        return 1.0
+
+    # Define bandwidth for Gaussian kernel (controls smoothness)
+    bandwidth = 3.0  # Adjust based on typical spread of conference talk counts
+
+    # Define range for conference talk counts (0 to reasonable maximum)
+    min_talks, max_talks = 0, 50  # Most apostles had 0-50 talks before calling
+
+    # Calculate Gaussian kernel weights for all talk counts in range
+    all_talk_counts = np.arange(min_talks, max_talks + 1)
+    historical_talks = np.array(historical_conference_talk_numbers)
+
+    # Gaussian kernel density estimation
+    weights = np.exp(
+        -0.5 * ((historical_talks[:, np.newaxis] - all_talk_counts) / bandwidth) ** 2
+    ).sum(axis=0)
+
+    # Normalize so probabilities sum to 1
+    normalized_weights = weights / weights.sum()
+
+    # Return probability for requested conference talk count
+    if min_talks <= conference_talk_count <= max_talks:
+        talk_index = conference_talk_count - min_talks
+        return float(normalized_weights[talk_index])
+    # Very low probability for counts outside normal range
+    return 0.001
+
+
 def select_new_apostle(
     candidate_leaders: list[Leader],
     current_date: date,
+    historical_conference_talk_numbers: list[int],
 ) -> Leader | None:
-    """Select a new apostle from candidates based on age probability distribution.
+    """Select a new apostle from candidates based on age and conference talk probability.
+
+    Uses both age probability distribution and conference talk experience to
+    weight candidate selection probabilities.
 
     Args:
         candidate_leaders: List of living candidate leaders
         current_date: Current simulation date for age calculation
+        historical_conference_talk_numbers: Historical conference talk counts from apostles
 
     Returns:
         Selected leader or None if no candidates available
@@ -252,14 +310,24 @@ def select_new_apostle(
     if not candidate_leaders:
         return None
 
-    # Calculate age and probability for each candidate
+    # Calculate combined age and conference talk probability for each candidate
     candidates_with_weights = []
     for candidate in candidate_leaders:
         if candidate.birth_date:
             # Calculate current age
             age = (current_date - candidate.birth_date).days // 365
-            probability = calculate_apostle_calling_age_probability(age)
-            candidates_with_weights.append((candidate, probability))
+            age_probability = calculate_apostle_calling_age_probability(age)
+
+            # Calculate conference talk probability using pre-apostle talks and historical data
+            talk_count = candidate.pre_apostle_conference_talks
+            talk_probability = calculate_conference_talk_probability(
+                talk_count, historical_conference_talk_numbers
+            )
+
+            # Combined probability = age_probability * conference_talk_probability
+            combined_probability = age_probability * talk_probability
+
+            candidates_with_weights.append((candidate, combined_probability))
 
     if not candidates_with_weights:
         return None
@@ -545,9 +613,12 @@ class VectorizedApostolicSimulation:
         """Run vectorized Monte Carlo simulation for massive speedup."""
         if random_seed is not None:
             np.random.seed(random_seed)
+            random.seed(random_seed)
 
         # Store original leaders for age calculations
         self.original_leaders = leaders
+
+        historical_conference_talk_numbers = _setup_historical_conference_talk_numbers(leaders)
 
         # Initialize monthly succession tracking and replacement event logging
         self.monthly_succession_data = [] if show_succession_candidates else None
@@ -593,6 +664,7 @@ class VectorizedApostolicSimulation:
             calling_types,
             n_days,
             iterations,
+            historical_conference_talk_numbers,
             show_monthly_composition,
             leader_names if show_monthly_composition else [],
             show_succession_candidates,
@@ -661,6 +733,7 @@ class VectorizedApostolicSimulation:
         calling_types: np.ndarray,
         n_days: int,
         iterations: int,
+        historical_conference_talk_numbers: list[int],
         show_monthly_composition: bool = False,
         leader_names: list[str] | None = None,
         show_succession_candidates: bool = False,
@@ -816,6 +889,7 @@ class VectorizedApostolicSimulation:
                             replacement_leader = select_new_apostle(
                                 living_candidates,
                                 simulation_date,
+                                historical_conference_talk_numbers,
                             )
 
                             if replacement_leader:

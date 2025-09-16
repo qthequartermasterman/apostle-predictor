@@ -129,8 +129,12 @@ class TestDataConverters:
         person.birthDate = Mock()
         person.birthDate.fullDate = date(1924, 9, 9)
         person.callings = []
+        person.related = []  # No conference talks link
 
-        leader = biography_to_leader(mock_bio)
+        # Mock client
+        mock_client = Mock()
+
+        leader = biography_to_leader(mock_bio, mock_client)
 
         assert leader is not None
         assert leader.name == "Russell M. Nelson"
@@ -141,8 +145,9 @@ class TestDataConverters:
         """Test converter when no person data available."""
         mock_bio = Mock()
         mock_bio.props.pageProps.contentPerson = []
+        mock_client = Mock()
 
-        leader = biography_to_leader(mock_bio)
+        leader = biography_to_leader(mock_bio, mock_client)
 
         assert leader is None
 
@@ -167,8 +172,10 @@ class TestDataConverters:
         mock_calling.activeCalling = True
         mock_calling.seniorityNumber = 8
         person.callings = [mock_calling]
+        person.related = []  # No conference talks link
+        mock_client = Mock()
 
-        leader = biography_to_leader(mock_bio)
+        leader = biography_to_leader(mock_bio, mock_client)
 
         assert leader is not None
         assert leader.name == "Jeffrey R. Holland"

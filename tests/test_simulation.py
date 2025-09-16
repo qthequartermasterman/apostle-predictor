@@ -8,6 +8,7 @@ from apostle_predictor.models.leader_models import (
     Calling,
     CallingStatus,
     CallingType,
+    ConferenceTalk,
     Leader,
 )
 from apostle_predictor.simulation import (
@@ -15,6 +16,7 @@ from apostle_predictor.simulation import (
     VectorizedSimulationAnalyzer,
     VectorizedSimulationResult,
     calculate_apostle_calling_age_probability,
+    calculate_conference_talk_probability,
     get_leader_title,
     is_apostolic_leader,
     is_candidate_leader,
@@ -381,8 +383,87 @@ class TestApostleSelectionFunctions:
             ),
         ]
 
-        selected = select_new_apostle(candidates, date(2024, 1, 1))
+        # Use some sample historical data for testing
+        historical_data = [5, 10, 15, 8, 12, 18, 3, 7, 20, 14]
+        selected = select_new_apostle(candidates, date(2024, 1, 1), historical_data)
 
         # Should return one of the candidates
         assert selected is not None
         assert selected in candidates
+
+    def test_calculate_conference_talk_probability(self) -> None:
+        """Test conference talk probability calculation with historical data."""
+        # Sample historical data: typical conference talk counts before apostolic calling
+        historical_data = [0, 2, 5, 8, 12, 15, 18, 22, 25, 3, 7, 10, 14, 20]
+
+        # Test that function returns probabilities (0.0 to 1.0)
+        prob_0 = calculate_conference_talk_probability(0, historical_data)
+        prob_10 = calculate_conference_talk_probability(10, historical_data)
+        prob_25 = calculate_conference_talk_probability(25, historical_data)
+
+        # All should be valid probabilities
+        assert 0.0 <= prob_0 <= 1.0
+        assert 0.0 <= prob_10 <= 1.0
+        assert 0.0 <= prob_25 <= 1.0
+
+        # Test edge cases
+        assert calculate_conference_talk_probability(-1, historical_data) >= 0.0  # Negative handled
+        assert calculate_conference_talk_probability(100, historical_data) == 0.001  # Outside range
+
+        # Test empty historical data
+        assert calculate_conference_talk_probability(10, []) == 1.0  # Uniform fallback
+
+    def test_select_new_apostle_with_conference_talks(self) -> None:
+        """Test apostle selection considers conference talks."""
+        # Create candidates with different conference talk counts
+        candidates = [
+            Leader(
+                name="High Talk Candidate",
+                birth_date=date(1965, 1, 1),
+                callings=[
+                    Calling(
+                        calling_type=CallingType.GENERAL_AUTHORITY,
+                        status=CallingStatus.CURRENT,
+                    )
+                ],
+                conference_talks=[
+                    ConferenceTalk(
+                        title=f"Talk {i}",
+                        date=date(2020 + i // 2, 4 if i % 2 == 0 else 10, 1),
+                        session="Saturday Morning",
+                        url=f"/study/general-conference/{2020 + i // 2}/{4 if i % 2 == 0 else 10}/talk-{i}",
+                    )
+                    for i in range(15)  # 15 conference talks (high but reasonable)
+                ],
+            ),
+            Leader(
+                name="Low Talk Candidate",
+                birth_date=date(1965, 1, 1),  # Same age to isolate conference talk effect
+                callings=[
+                    Calling(
+                        calling_type=CallingType.GENERAL_AUTHORITY,
+                        status=CallingStatus.CURRENT,
+                    )
+                ],
+                conference_talks=[],  # No conference talks (low probability)
+            ),
+        ]
+
+        # Create historical data that includes typical conference talk counts
+        # The 20 talks should be very high, 0 talks should be low probability
+        historical_data = [0, 2, 5, 8, 12, 15, 18, 3, 7, 10, 14, 6, 9, 11]
+
+        # Run selection multiple times to check statistical preference
+        selections = []
+        for _ in range(100):  # Run many times to see statistical trend
+            selected = select_new_apostle(candidates, date(2024, 1, 1), historical_data)
+            if selected:
+                selections.append(selected.name)
+
+        # The high talk candidate should be selected more often
+        high_talk_selections = selections.count("High Talk Candidate")
+        low_talk_selections = selections.count("Low Talk Candidate")
+
+        # With 15 talks (above average) vs 0 talks (low),
+        # the high talk candidate should be selected more often
+        assert high_talk_selections > low_talk_selections
