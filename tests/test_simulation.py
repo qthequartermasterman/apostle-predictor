@@ -416,6 +416,7 @@ class TestApostleSelectionFunctions:
                         title=f"Talk {i}",
                         date=date(2020 + i // 2, 4 if i % 2 == 0 else 10, 1),
                         session="Saturday Morning",
+                        url=f"/study/general-conference/{2020 + i // 2}/{4 if i % 2 == 0 else 10}/talk-{i}",
                     )
                     for i in range(20)  # 20 conference talks (high)
                 ],

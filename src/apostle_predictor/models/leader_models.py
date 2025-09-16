@@ -55,8 +55,8 @@ class ConferenceTalk(pydantic.BaseModel):
 
     title: str
     date: date
-    session: str  # e.g., "Saturday Morning", "Sunday Afternoon"
-    url: str | None = None
+    session: str | None  # e.g., "Saturday Morning", "Sunday Afternoon"
+    url: str | None
 
 
 class Leader(pydantic.BaseModel):
@@ -70,6 +70,15 @@ class Leader(pydantic.BaseModel):
     conference_talks: list[ConferenceTalk] = pydantic.Field(default_factory=list)
     assignments: list[str] = pydantic.Field(default_factory=list)
     """Geographic or functional assignments"""
+
+    @property
+    def pre_apostle_conference_talks(self) -> int:
+        """Number of conference talks given before apostle call."""
+        apostle_callings = self.apostle_callings
+        if not apostle_callings:
+            return len(self.conference_talks)
+        apostle_calling_date = min(call.start_date for call in apostle_callings)
+        return len([talk for talk in self.conference_talks if talk.date <= apostle_calling_date])
 
     @property
     def is_alive(self) -> bool:
@@ -94,18 +103,20 @@ class Leader(pydantic.BaseModel):
         return age
 
     @property
+    def apostle_callings(self) -> list[Calling]:
+        """All callings of Apostle type."""
+        return [calling.calling_type == CallingType.APOSTLE for calling in self.callings]
+
+    @property
     def is_apostle(self) -> bool:
         """Check if currently serving as an apostle."""
-        return any(
-            calling.calling_type == CallingType.APOSTLE and calling.status == CallingStatus.CURRENT
-            for calling in self.callings
-        )
+        return any(calling.status == CallingStatus.CURRENT for calling in self.apostle_callings)
 
     @property
     def years_as_apostle(self) -> float | None:
         """Calculate years served as apostle."""
         apostle_calling = next(
-            (calling for calling in self.callings if calling.calling_type == CallingType.APOSTLE),
+            self.apostle_callings,
             None,
         )
 
@@ -135,6 +146,8 @@ class QuorumTracker:
         scraper = LeaderDataScraper()
         all_leaders = scraper.scrape_general_authorities()
         self.current_apostles = [leader for leader in all_leaders if leader.is_apostle]
+        for apostle in self.current_apostles:
+            print(apostle.name, apostle.conference_talks)
 
     def get_apostles_by_seniority(self) -> list[Leader]:
         """Return apostles ordered by seniority (calling date)."""

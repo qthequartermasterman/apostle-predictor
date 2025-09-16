@@ -1,12 +1,12 @@
 """Functions to convert between Pydantic models and Leader objects."""
 
 import contextlib
-import hashlib
-import random
+import warnings
 from datetime import UTC, date, datetime
 
 import auto_pydantic_cache
 import httpx
+import pydantic
 from bs4 import BeautifulSoup
 
 from apostle_predictor.models.biography_models import BiographyPageData
@@ -21,7 +21,7 @@ from apostle_predictor.models.organization_models import OrganizationPageData
 from apostle_predictor.models.seventies_models import SeventiesApiResponse
 
 
-def biography_to_leader(bio_data: BiographyPageData) -> Leader | None:
+def biography_to_leader(bio_data: BiographyPageData, client: httpx.Client) -> Leader | None:
     """Convert BiographyPageData to Leader object."""
     if not bio_data.props.pageProps.contentPerson:
         return None
@@ -88,7 +88,7 @@ def biography_to_leader(bio_data: BiographyPageData) -> Leader | None:
         leader_callings.append(calling)
 
     # Add conference talks data
-    conference_talks = _generate_conference_talks_data(name, leader_callings)
+    conference_talks = _scrape_conference_talks(bio_data, client)
 
     # Create Leader object
     return Leader(
@@ -96,102 +96,68 @@ def biography_to_leader(bio_data: BiographyPageData) -> Leader | None:
         birth_date=birth_date,
         current_age=current_age,
         callings=leader_callings,
-        conference_talks=conference_talks,
+        conference_talks=conference_talks or [],
     )
 
 
-def _generate_conference_talks_data(name: str, callings: list[Calling]) -> list[ConferenceTalk]:
-    """Generate realistic conference talks data based on historical patterns.
+class _ConferenceTalks(pydantic.BaseModel):
+    """Dummy model for storing a list of ConferenceTalks in a pydantic model.
 
-    This is a placeholder implementation using historical data patterns.
-    In a real implementation, this would scrape actual conference talk data.
+    This lets us use `auto_pydantic_cache` in `_scrape_conference_talks`
     """
-    # Use stable SHA256 hash of name as seed for deterministic random generation
-    name_seed = int(hashlib.sha256(name.encode()).hexdigest()[:8], 16)
-    rng = random.Random(name_seed)
 
-    # Historical data: Average conference talks given before apostolic calling
-    # Based on analysis of historical apostles
-    apostle_pre_calling_talks = {
-        # Current Apostles - estimated talks before apostolic calling
-        "Russell M. Nelson": 25,  # Extensive medical/church career
-        "Dallin H. Oaks": 18,  # Legal/academic background
-        "Jeffrey R. Holland": 22,  # BYU president, extensive speaking
-        "Dieter F. Uchtdorf": 12,  # Business background, fewer GA talks
-        "David A. Bednar": 15,  # Academic/leadership roles
-        "Quentin L. Cook": 16,  # Business/legal background
-        "D. Todd Christofferson": 14,  # Legal background
-        "Neil L. Andersen": 17,  # Mission president, area authority
-        "Ronald A. Rasband": 13,  # Business background
-        "Gary E. Stevenson": 11,  # Business background
-        "Dale G. Renlund": 8,  # Medical background, recent calling
-        "Gerrit W. Gong": 7,  # Academic, recent calling
-        "Ulisses Soares": 9,  # Business, international background
-        "Patrick Kearon": 5,  # Very recent calling
-    }
+    talks: list[ConferenceTalk]
 
-    # General Authority Seventies typically have fewer talks before apostolic calling
-    base_talk_count = apostle_pre_calling_talks.get(name, 0)
 
-    # If not a current apostle, estimate based on calling type
-    if base_talk_count == 0:
-        is_general_authority = any(
-            calling.calling_type == CallingType.GENERAL_AUTHORITY
-            and calling.status == CallingStatus.CURRENT
-            for calling in callings
-        )
+def _scrape_conference_talks(
+    bio_data: BiographyPageData, client: httpx.Client
+) -> list[ConferenceTalk] | None:
+    """Extract conference talks from the Church Website.
 
-        # General Authority Seventies: 2-15 talks; Others: 0-8 talks
-        base_talk_count = rng.randint(2, 15) if is_general_authority else rng.randint(0, 8)
+    Conference talks can be extracted from the bio_data.props.pageProps.contentPerson[0].related.
+    It is the related with the linkText="Conference Talks"
+    This will lead to a URL from which conference talks can be scraped
+    This is an example URL: https://www.churchofjesuschrist.org/study/general-conference/speakers/russell-m-nelson?lang=eng
+    """
+    related_urls = bio_data.props.pageProps.contentPerson[0].related
+    conference_talks_list_url: str | None = None
+    for related_url in related_urls:
+        if related_url.linkText == "Conference Talks":
+            conference_talks_list_url = related_url.linkUrl
+            break
+    if conference_talks_list_url is None:
+        warnings.warn(f"No conference talks link found on Biography Page: {bio_data}", stacklevel=2)
+        return None
 
-    # Generate conference talks with dates
-    talks = []
-    if base_talk_count > 0:
-        # Generate talks over past 10-30 years
-        start_date = date(1995, 4, 1)  # April 1995 General Conference
-        end_date = date(2024, 10, 1)  # October 2024 General Conference
-
-        for i in range(base_talk_count):
-            # Generate semi-annual conference dates (April and October)
-            year = rng.randint(start_date.year, end_date.year)
-            month = rng.choice([4, 10])  # April or October
-
-            # Generate valid conference dates (first weekend of April/October)
-            # Use the first Saturday as a safe starting point
+    @auto_pydantic_cache.pydantic_cache
+    def conference_talks_closure(list_url: str) -> _ConferenceTalks:
+        conference_talks_list_response = client.get(list_url, follow_redirects=True)
+        conference_talks_list_response.raise_for_status()
+        html = conference_talks_list_response.text
+        soup = BeautifulSoup(html, "html.parser")
+        conference_links = soup.select('a[href^="/study/general-conference"]')
+        conference_talks: list[ConferenceTalk] = []
+        for link in conference_links:
             try:
-                # First Saturday is typically between days 1-7
-                for day_attempt in range(1, 8):
-                    try:
-                        talk_date = date(year, month, day_attempt)
-                        # Use the first valid date we can create
-                        break
-                    except ValueError:
-                        continue
-                else:
-                    # Fallback to day 1 if all attempts fail (should never happen for April/October)
-                    talk_date = date(year, month, 1)
-            except ValueError:
-                # Ultimate fallback (should never reach here)
-                talk_date = date(year, 4, 1)
-            session = rng.choice(
-                [
-                    "Saturday Morning",
-                    "Saturday Afternoon",
-                    "Saturday Evening",
-                    "Sunday Morning",
-                    "Sunday Afternoon",
-                ]
+                empty, study, general_conference, year, month, *stub = link["href"].split("/")
+            except ValueError as e:
+                if "not enough values to unpack" in str(e):
+                    continue
+                raise
+            assert empty == ""
+            assert study == "study"
+            assert general_conference == "general-conference"
+            conference_talks.append(
+                ConferenceTalk(
+                    title="".join(stub),  # TODO: parse the actual title
+                    date=date(int(year), int(month), 1),  # TODO: parse the actual date
+                    session=None,  # TODO: parse the actual session
+                    url=link["href"],
+                )
             )
+        return _ConferenceTalks(talks=conference_talks)
 
-            talk = ConferenceTalk(
-                title=f"Conference Talk {i + 1}",  # Placeholder title
-                date=talk_date,
-                session=session,
-                url=None,  # Would be populated in real implementation
-            )
-            talks.append(talk)
-
-    return sorted(talks, key=lambda x: x.date)
+    return conference_talks_closure(conference_talks_list_url).talks
 
 
 class LeaderDataScraper:
@@ -227,7 +193,7 @@ class LeaderDataScraper:
         for url in leader_urls:
             try:
                 bio_data = self._parse_leader_biography(url)
-                leader = biography_to_leader(bio_data)
+                leader = biography_to_leader(bio_data, self.client)
                 if leader:
                     leaders.append(leader)
             except Exception as e:
