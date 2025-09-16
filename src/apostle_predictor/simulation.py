@@ -306,8 +306,8 @@ def select_new_apostle(
             age = (current_date - candidate.birth_date).days // 365
             age_probability = calculate_apostle_calling_age_probability(age)
 
-            # Calculate conference talk probability multiplier
-            talk_count = len(candidate.conference_talks)
+            # Calculate conference talk probability multiplier using pre-apostle talks
+            talk_count = candidate.pre_apostle_conference_talks
             talk_multiplier = calculate_conference_talk_probability(talk_count)
 
             # Combined probability = age_probability * conference_talk_multiplier

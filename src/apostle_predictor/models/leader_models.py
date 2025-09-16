@@ -77,7 +77,15 @@ class Leader(pydantic.BaseModel):
         apostle_callings = self.apostle_callings
         if not apostle_callings:
             return len(self.conference_talks)
-        apostle_calling_date = min(call.start_date for call in apostle_callings)
+
+        # Find the earliest apostle calling date (ignore None dates)
+        calling_dates = [
+            call.start_date for call in apostle_callings if call.start_date is not None
+        ]
+        if not calling_dates:
+            return len(self.conference_talks)
+
+        apostle_calling_date = min(calling_dates)
         return len([talk for talk in self.conference_talks if talk.date <= apostle_calling_date])
 
     @property
@@ -105,7 +113,7 @@ class Leader(pydantic.BaseModel):
     @property
     def apostle_callings(self) -> list[Calling]:
         """All callings of Apostle type."""
-        return [calling.calling_type == CallingType.APOSTLE for calling in self.callings]
+        return [calling for calling in self.callings if calling.calling_type == CallingType.APOSTLE]
 
     @property
     def is_apostle(self) -> bool:
@@ -116,7 +124,7 @@ class Leader(pydantic.BaseModel):
     def years_as_apostle(self) -> float | None:
         """Calculate years served as apostle."""
         apostle_calling = next(
-            self.apostle_callings,
+            iter(self.apostle_callings),
             None,
         )
 
