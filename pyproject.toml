@@ -26,7 +26,7 @@ dev = [
     "pytest==8.4.2",
     "pytest-github-actions-annotate-failures==0.3.0",
     "ruff==0.13.0",
-    "ty==0.0.1a20",
+    "ty==0.0.1a21",
 ]
 
 [tool.ruff]
