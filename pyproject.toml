@@ -9,10 +9,10 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "auto-pydantic-cache==1.1.1",
-    "beautifulsoup4==4.13.5",
+    "beautifulsoup4==4.14.2",
     "httpx==0.28.1",
-    "pandas==2.3.2",
-    "pydantic==2.11.9",
+    "pandas==2.3.3",
+    "pydantic==2.11.10",
 ]
 
 [build-system]
@@ -22,10 +22,10 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "pre-commit==4.3.0",
-    "pyrefly==0.32.0",
+    "pyrefly==0.35.0",
     "pytest==8.4.2",
     "pytest-github-actions-annotate-failures==0.3.0",
-    "ruff==0.13.0",
+    "ruff==0.13.3",
     "ty==0.0.1a20",
 ]
 
